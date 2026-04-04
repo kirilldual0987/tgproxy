@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FreeProxyForTG (СТРОГАЯ ПРОВЕРКА)</title>
+<title>FreeProxyForTG</title>
 <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/400/500/600/700/800/index.css" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -246,6 +246,7 @@ body {
 .stat-pill.red .sv { color: #ff5252; }
 .stat-pill.blue .sv { color: #00d4ff; }
 .stat-pill.yellow .sv { color: #ffc107; }
+.stat-pill.orange .sv { color: #ff9800; }
 .check-all-btn {
   width: 100%;
   padding: 12px;
@@ -336,6 +337,10 @@ body {
   background: rgba(0,230,118,0.04);
   border-color: rgba(0,230,118,0.15);
 }
+.proxy-item.suspect {
+  background: rgba(255,152,0,0.04);
+  border-color: rgba(255,152,0,0.15);
+}
 .proxy-item.dead {
   background: rgba(255,82,82,0.03);
   border-color: rgba(255,82,82,0.1);
@@ -357,6 +362,10 @@ body {
 .proxy-item.working .status-dot {
   background: #00e676;
   box-shadow: 0 0 6px rgba(0,230,118,0.5);
+}
+.proxy-item.suspect .status-dot {
+  background: #ff9800;
+  box-shadow: 0 0 6px rgba(255,152,0,0.5);
 }
 .proxy-item.dead .status-dot {
   background: #ff5252;
@@ -396,6 +405,7 @@ body {
   font-weight: 600;
 }
 .proxy-item .p-ping.slow { color: #ffc107; }
+.proxy-item .p-ping.suspect { color: #ff9800; }
 .proxy-item .p-ping.fail { color: #ff5252; }
 .proxy-item .p-copy {
   padding: 5px 9px;
@@ -563,7 +573,7 @@ body {
 
     <button class="extended-btn" id="extended-btn" onclick="loadExtended()">
       📂 Режим-extended — загрузить все прокси
-      <span class="btn-sub">Загрузит прокси из all_proxies.txt</span>
+      <span class="btn-sub">Загрузит прокси из all_proxies.txt + GitHub</span>
     </button>
 
     <div id="extended-info" style="display:none; text-align:center; font-size:0.75rem; color:rgba(200,200,255,0.4); margin-bottom:14px; padding:8px 12px; background:rgba(255,110,196,0.05); border-radius:8px; border:1px solid rgba(255,110,196,0.1);">
@@ -578,19 +588,21 @@ body {
     <div class="filter-row" id="filter-row">
       <button class="filter-btn active" data-f="all" onclick="setFilter('all',this)">Все</button>
       <button class="filter-btn" data-f="working" onclick="setFilter('working',this)">✅ Рабочие</button>
+      <button class="filter-btn" data-f="suspect" onclick="setFilter('suspect',this)">⚠️ Сомнительные</button>
       <button class="filter-btn" data-f="unchecked" onclick="setFilter('unchecked',this)">⬜ Без проверки</button>
       <button class="filter-btn" data-f="dead" onclick="setFilter('dead',this)">❌ Мёртвые</button>
     </div>
 
     <div class="stats-bar" id="stats-bar" style="display:none;">
       <div class="stat-pill green">✅ <span class="sv" id="s-working">0</span></div>
+      <div class="stat-pill orange">⚠️ <span class="sv" id="s-suspect">0</span></div>
       <div class="stat-pill red">❌ <span class="sv" id="s-dead">0</span></div>
       <div class="stat-pill yellow">⏳ <span class="sv" id="s-checking">0</span></div>
       <div class="stat-pill blue">📦 <span class="sv" id="s-total">0</span></div>
     </div>
 
     <div class="check-info" id="check-info" style="display:none;">
-      🔍 Строгая проверка: Веб-сайты помечаются как ❌. Только серверы, отвергающие HTTP (MTProto), помечаются как ✅.
+      🔍 Проверка: пинг 200-1500мс = ✅ Рабочий | &lt;200мс = ⚠️ Сомнительный | &gt;1500мс = ❌ Мёртвый
     </div>
 
     <button class="check-all-btn" id="check-btn" onclick="checkAllProxies()" style="display:none;">
@@ -618,8 +630,12 @@ body {
         1. Нажмите 📋 чтобы скопировать ссылку<br>
         2. Откройте Telegram и вставьте ссылку<br>
         3. Telegram автоматически предложит добавить прокси<br><br>
-        <strong>Строгая проверка:</strong><br>
-        Сайт проверяет поведение сервера. Если сервер отвечает как обычный сайт (успешное соединение), он помечается как ❌ (это не прокси). Если сервер сбрасывает соединение (ошибка сети), он помечается как ✅ (поведение MTProto прокси). Это фильтрует ложные срабатывания.
+        <strong>Проверка:</strong><br>
+        • DNS-резолв через Google DNS API<br>
+        • Попытка подключения к серверу (таймаут 2с)<br>
+        • Пинг 200-1500мс = ✅ Рабочий (нормальная задержка MTProto)<br>
+        • Пинг &lt;200мс = ⚠️ Сомнительный (слишком быстро, возможно фейк)<br>
+        • Пинг &gt;1500мс или таймаут = ❌ Мёртвый
       </div>
     </div>
 
@@ -627,8 +643,8 @@ body {
       <div class="stats-grid">
         <div class="stat-card"><div class="sv" id="st-total">0</div><div class="sl">Всего</div></div>
         <div class="stat-card"><div class="sv" id="st-working">0</div><div class="sl">Рабочих</div></div>
+        <div class="stat-card"><div class="sv" id="st-suspect">0</div><div class="sl">Сомнительных</div></div>
         <div class="stat-card"><div class="sv" id="st-dead">0</div><div class="sl">Мёртвых</div></div>
-        <div class="stat-card"><div class="sv" id="st-rate">—</div><div class="sl">Успешность</div></div>
       </div>
     </div>
 
@@ -642,11 +658,11 @@ body {
 
 <script>
 // ==================== CONSTANTS ====================
-const GUARANTEED = [
+const GUARANTEED = new Set([
   'https://t.me/proxy?server=ffastdomain-eu.com&port=443&secret=afdc38b8068b2444e50f6a4f093751b5',
   'https://t.me/proxy?server=beast.mtproxy.me.mtproto.ru&port=443&secret=ee3f354f86e59e2c166c83031772d92d6379612e72755',
   'https://t.me/proxy?server=144.31.119.121&port=443&secret=dd79c7111a1ce1bc116e405f658ff6f05d'
-];
+]);
 
 // ==================== STATE ====================
 let allProxies = [];
@@ -688,66 +704,77 @@ async function loadExtended() {
   btn.disabled = true;
   btn.textContent = '⏳ Загрузка...';
 
-  try {
-    // Load from local file
-    const response = await fetch('./all_proxies.txt', { cache: 'no-store' });
-    if (!response.ok) throw new Error('Файл all_proxies.txt не найден');
-    const text = await response.text();
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.startsWith('https://t.me/proxy?'));
+  const sources = [
+    './all_proxies.txt',
+    'https://raw.githubusercontent.com/SoliSpirit/mtproto/master/all_proxies.txt',
+    'https://raw.githubusercontent.com/hookzof/mtpro.xyz/master/all_proxies.txt'
+  ];
 
-    // Deduplicate
-    const seen = new Set(GUARANTEED);
-    const uniqueLines = [];
-    for (const line of lines) {
-      if (!seen.has(line)) {
-        seen.add(line);
-        uniqueLines.push(line);
+  const seen = new Set(GUARANTEED);
+  const uniqueLines = [];
+
+  for (const src of sources) {
+    try {
+      const resp = await fetch(src, { cache: 'no-store' });
+      if (!resp.ok) continue;
+      const text = await resp.text();
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l.startsWith('https://t.me/proxy?'));
+      for (const line of lines) {
+        if (!seen.has(line)) {
+          seen.add(line);
+          uniqueLines.push(line);
+        }
       }
+    } catch (e) {
+      console.warn('Ошибка загрузки:', src, e);
     }
+  }
 
-    allProxies = uniqueLines.map(url => {
-      const parsed = parseUrl(url);
-      if (!parsed) return null;
-      return { ...parsed, status: 'unchecked', ping: null };
-    }).filter(Boolean);
-
-    document.getElementById('extended-info').style.display = 'block';
-    document.getElementById('extended-count').textContent = allProxies.length;
-    document.getElementById('stats-bar').style.display = 'flex';
-    document.getElementById('check-btn').style.display = 'block';
-    document.getElementById('check-info').style.display = 'block';
-
-    updateStats();
-    renderProxies();
-    showToast(`📂 Загружено ${allProxies.length} прокси`);
-    
-    btn.innerHTML = '✅ Extended загружен<span class="btn-sub" style="display:block;margin-top:3px;font-size:0.72rem;color:rgba(255,110,196,0.6)">' + allProxies.length + ' прокси</span>';
-
-  } catch (e) {
-    showToast('❌ Ошибка: ' + e.message);
+  if (uniqueLines.length === 0) {
+    showToast('❌ Не удалось загрузить прокси');
     btn.disabled = false;
     btn.textContent = '📂 Режим-extended';
+    return;
   }
+
+  allProxies = uniqueLines.map(url => {
+    const parsed = parseUrl(url);
+    if (!parsed) return null;
+    return { ...parsed, status: 'unchecked', ping: null };
+  }).filter(Boolean);
+
+  document.getElementById('extended-info').style.display = 'block';
+  document.getElementById('extended-count').textContent = allProxies.length;
+  document.getElementById('stats-bar').style.display = 'flex';
+  document.getElementById('check-btn').style.display = 'block';
+  document.getElementById('check-info').style.display = 'block';
+  document.getElementById('filter-row').style.display = 'flex';
+
+  updateStats();
+  renderProxies();
+  showToast(`📂 Загружено ${allProxies.length} прокси`);
+  
+  btn.innerHTML = '✅ Extended загружен<span class="btn-sub" style="display:block;margin-top:3px;font-size:0.72rem;color:rgba(255,110,196,0.6)">' + allProxies.length + ' прокси</span>';
 }
 
-// ==================== STRICT PROXY CHECK (INVERTED LOGIC) ====================
+// ==================== PROXY CHECK WITH PING FILTER ====================
 async function checkProxy(proxy) {
   const host = proxy.server;
   const port = proxy.port;
-  const timeout = 1500; // Shorter timeout for stricter check
+  const timeout = 2000;
 
   // 1. DNS Check
   let dnsOk = false;
   try {
     const dnsUrl = `https://dns.google/resolve?name=${encodeURIComponent(host)}&type=A`;
-    const resp = await fetch(dnsUrl, { signal: AbortSignal.timeout(1000) });
+    const resp = await fetch(dnsUrl, { signal: AbortSignal.timeout(1500) });
     if (resp.ok) {
-       const data = await resp.json();
-       dnsOk = data.Status === 0 && data.Answer && data.Answer.length > 0;
+      const data = await resp.json();
+      dnsOk = data.Status === 0 && data.Answer && data.Answer.length > 0;
     }
   } catch (e) { dnsOk = false; }
 
-  if (!dnsOk) return { working: false, ping: null, reason: 'DNS Fail' };
+  if (!dnsOk) return { status: 'dead', ping: null, reason: 'DNS Fail' };
 
   // 2. Connection Check
   const controller = new AbortController();
@@ -755,7 +782,6 @@ async function checkProxy(proxy) {
   const startTime = performance.now();
 
   try {
-    // Пытаемся подключиться как к обычному сайту
     await fetch(`https://${host}:${port}`, {
       mode: 'no-cors',
       signal: controller.signal,
@@ -763,26 +789,32 @@ async function checkProxy(proxy) {
     });
     
     clearTimeout(timer);
-    // Если fetch успешен — сервер ответил как веб-сайт (HTTP/TLS).
-    // Настоящий MTProto прокси обычно сбрасывает соединение или выдает ошибку протокола.
-    // Поэтому успешный ответ = это веб-сервер, а не прокси.
-    return { working: false, ping: null, reason: 'Web Server (Not Proxy)' };
-
+    const elapsed = Math.round(performance.now() - startTime);
+    
+    // Пинг-фильтр:
+    if (elapsed >= 200 && elapsed <= 1500) {
+      return { status: 'working', ping: elapsed, reason: 'Good ping' };
+    } else if (elapsed < 200) {
+      return { status: 'suspect', ping: elapsed, reason: 'Too fast' };
+    } else {
+      return { status: 'dead', ping: elapsed, reason: 'Too slow' };
+    }
   } catch (e) {
-    const elapsed = performance.now() - startTime;
+    const elapsed = Math.round(performance.now() - startTime);
     clearTimeout(timer);
 
     if (e.name === 'AbortError') {
-       return { working: false, ping: null, reason: 'Timeout' };
+      return { status: 'dead', ping: null, reason: 'Timeout' };
     }
 
-    // Если ошибка произошла быстро (< 1000ms), значит сервер жив, но отверг HTTP запрос.
-    // Это типичное поведение для MTProto прокси.
-    if (elapsed < 1000) {
-       return { working: true, ping: Math.round(elapsed), reason: 'Proxy Protocol (Fast Refusal)' };
+    // Быстрая ошибка = сервер жив, но отверг запрос
+    if (elapsed >= 200 && elapsed <= 1500) {
+      return { status: 'working', ping: elapsed, reason: 'Fast refusal' };
+    } else if (elapsed < 200) {
+      return { status: 'suspect', ping: elapsed, reason: 'Very fast error' };
     }
-
-    return { working: false, ping: null, reason: 'Slow Error' };
+    
+    return { status: 'dead', ping: null, reason: 'Slow error' };
   }
 }
 
@@ -793,7 +825,7 @@ async function checkAllProxies() {
 
   const btn = document.getElementById('check-btn');
   btn.disabled = true;
-  btn.textContent = '⏳ Строгая проверка...';
+  btn.textContent = '⏳ Проверка...';
 
   const progressWrap = document.getElementById('progress-wrap');
   const progressFill = document.getElementById('progress-fill');
@@ -802,7 +834,7 @@ async function checkAllProxies() {
   progressWrap.classList.add('visible');
 
   const total = allProxies.length;
-  const batchSize = 15; // Parallel batch size
+  const batchSize = 10;
 
   for (let i = 0; i < total; i += batchSize) {
     const batch = allProxies.slice(i, Math.min(i + batchSize, total));
@@ -816,7 +848,7 @@ async function checkAllProxies() {
       renderProxies();
 
       const result = await checkProxy(proxy);
-      proxy.status = result.working ? 'working' : 'dead';
+      proxy.status = result.status;
       proxy.ping = result.ping;
       return result;
     }));
@@ -863,11 +895,11 @@ function renderProxies() {
     return true;
   });
 
-  const order = { working: 0, unchecked: 1, checking: 2, dead: 3 };
+  const order = { working: 0, suspect: 1, unchecked: 2, checking: 3, dead: 4 };
   filtered.sort((a, b) => {
-    const orderDiff = (order[a.status] || 3) - (order[b.status] || 3);
+    const orderDiff = (order[a.status] || 5) - (order[b.status] || 5);
     if (orderDiff !== 0) return orderDiff;
-    if (a.status === 'working' && b.status === 'working') {
+    if ((a.status === 'working' || a.status === 'suspect') && (b.status === 'working' || b.status === 'suspect')) {
       return (a.ping || 9999) - (b.ping || 9999);
     }
     return 0;
@@ -883,9 +915,14 @@ function renderProxies() {
     item.className = `proxy-item ${proxy.status}`;
 
     let pingHtml = '';
-    if (proxy.status === 'working' && proxy.ping !== null) {
-      const cls = proxy.ping > 500 ? 'slow' : '';
-      pingHtml = `<span class="p-ping ${cls}">⚡ ${proxy.ping}ms</span>`;
+    if (proxy.ping !== null) {
+      if (proxy.status === 'working') {
+        pingHtml = `<span class="p-ping">⚡ ${proxy.ping}ms</span>`;
+      } else if (proxy.status === 'suspect') {
+        pingHtml = `<span class="p-ping suspect">⚡ ${proxy.ping}ms</span>`;
+      } else if (proxy.status === 'dead') {
+        pingHtml = `<span class="p-ping fail">✗ ${proxy.ping}ms</span>`;
+      }
     } else if (proxy.status === 'dead') {
       pingHtml = '<span class="p-ping fail">✗</span>';
     }
@@ -904,19 +941,21 @@ function updateStats() {
   if (!allProxies.length) return;
   
   const working = allProxies.filter(p => p.status === 'working').length;
+  const suspect = allProxies.filter(p => p.status === 'suspect').length;
   const dead = allProxies.filter(p => p.status === 'dead').length;
   const checking = allProxies.filter(p => p.status === 'checking').length;
   const total = allProxies.length;
 
   document.getElementById('s-working').textContent = working;
+  document.getElementById('s-suspect').textContent = suspect;
   document.getElementById('s-dead').textContent = dead;
   document.getElementById('s-checking').textContent = checking;
   document.getElementById('s-total').textContent = total;
 
   document.getElementById('st-total').textContent = total;
   document.getElementById('st-working').textContent = working;
+  document.getElementById('st-suspect').textContent = suspect;
   document.getElementById('st-dead').textContent = dead;
-  document.getElementById('st-rate').textContent = total > 0 ? Math.round((working / total) * 100) + '%' : '—';
 }
 
 function switchTab(name) {
@@ -954,6 +993,7 @@ function copyLink(btn, url) {
 // ==================== INIT ====================
 document.getElementById('st-total').textContent = '0';
 document.getElementById('st-working').textContent = '0';
+document.getElementById('st-suspect').textContent = '0';
 document.getElementById('st-dead').textContent = '0';
 </script>
 </body>
