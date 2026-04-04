@@ -78,7 +78,7 @@ body {
 
 .logo p {
   color: rgba(200,200,255,0.45);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   margin-top: 4px;
 }
 
@@ -339,6 +339,17 @@ body {
   color: rgba(200,200,255,0.4);
   margin-top: 5px;
   text-align: center;
+}
+
+.check-info {
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(200,200,255,0.5);
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  background: rgba(0,212,255,0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(0,212,255,0.1);
 }
 
 .proxy-list {
@@ -623,7 +634,7 @@ body {
         <div class="guaranteed-item">
           <span class="g-check">✅</span>
           <span class="g-url">144.31.119.121:443</span>
-          <button class="g-copy" onclick="copyLink(this, 'https://t.me/proxy?server=144.31.119.121&port=443&secret=dd79c7111a1ce1bc116e405f658ff6f05d')">📋</button>
+          <button class="g-copy" onclick="copyLink(this, 'https://t.me/proxy?server=144.31.119.121&port=443&secret=dd79c7111a1ce1bc116e405f658ff605d')">📋</button>
         </div>
       </div>
     </div>
@@ -658,13 +669,19 @@ body {
       <div class="stat-pill blue">📦 <span class="sv" id="s-total">0</span></div>
     </div>
 
+    <div class="check-info" id="check-info" style="display:none;">
+      🌐 Проверка браузера: DNS + доступность порта. Фактическая работа в Telegram может отличаться.
+    </div>
+
     <button class="check-all-btn" id="check-btn" onclick="checkAllProxies()" style="display:none;">
       <span class="btn-shine"></span>
       🔍 Проверить все прокси
     </button>
 
     <div class="progress-wrap" id="progress-wrap">
-      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
       <div class="progress-label" id="progress-label">Подготовка...</div>
     </div>
 
@@ -681,8 +698,7 @@ body {
         1. Нажмите 📋 чтобы скопировать ссылку<br>
         2. Откройте Telegram и вставьте ссылку<br>
         3. Telegram автоматически предложит добавить прокси<br><br>
-        <strong>Проверка:</strong> Нажмите «Проверить все прокси» — сайт проверит через DNS (существует ли сервер) и попытается установить соединение. Если сервер не отвечает за 2 секунды — он помечается как мёртвый.<br><br>
-        <strong>Extended:</strong> Загрузит полную базу из all_proxies.txt.
+        <strong>Проверка:</strong> Сайт проверяет существование домена и отклик порта. Если сервер быстро отвечает или сбрасывает соединение — он считается живым.
       </div>
     </div>
 
@@ -708,7 +724,6 @@ let allProxies = [];
 let isChecking = false;
 let currentFilter = 'all';
 
-// ==================== PARSE ====================
 function parseUrl(url) {
   try {
     const u = new URL(url);
@@ -720,7 +735,6 @@ function parseUrl(url) {
   }
 }
 
-// ==================== LOAD EXTENDED ====================
 async function loadExtended() {
   const btn = document.getElementById('extended-btn');
   btn.disabled = true;
@@ -732,7 +746,6 @@ async function loadExtended() {
     const text = await response.text();
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.startsWith('https://t.me/proxy'));
 
-    // Deduplicate
     const seen = new Set();
     const newProxies = lines.filter(url => {
       if (seen.has(url)) return false;
@@ -750,6 +763,7 @@ async function loadExtended() {
     document.getElementById('extended-count').textContent = allProxies.length;
     document.getElementById('stats-bar').style.display = 'flex';
     document.getElementById('check-btn').style.display = 'block';
+    document.getElementById('check-info').style.display = 'block';
 
     updateStats();
     renderProxies();
@@ -762,9 +776,8 @@ async function loadExtended() {
   btn.innerHTML = '✅ Extended загружен<span class="btn-sub" style="display:block;margin-top:3px;font-size:0.72rem;color:rgba(255,110,196,0.6)">' + allProxies.length + ' прокси</span>';
 }
 
-// ==================== IMPROVED CHECK PROXY ====================
-// Строгая проверка: DNS + Быстрый ответ (до 2с)
-async function checkProxyDeep(proxy) {
+// РЕАЛИСТИЧНАЯ ПРОВЕРКА ДЛЯ MTProto
+async function checkProxy(proxy) {
   const host = proxy.server;
   
   // 1. DNS Check
@@ -780,59 +793,38 @@ async function checkProxyDeep(proxy) {
 
   if (!dnsOk) return { working: false, ping: null, reason: 'DNS Fail' };
 
-  // 2. Connection Check (Strict Timeout 2000ms)
-  const t0 = performance.now();
-  let connected = false;
-  
+  // 2. Port Reachability Check
+  // MTProto не отвечает на HTTP. Мы проверяем, жив ли сервер по скорости реакции.
+  // Быстрый отказ (< 600мс) = сервер жив, но протокол не совпадает.
+  // Таймаут (> 2000мс) = сервер мёртв/недоступен.
+  const startTime = performance.now();
   try {
-    // Пробуем подключиться через fetch (no-cors). 
-    // Если сервер жив (порт открыт), fetch либо вернет ответ, либо "повиснет" (но мы отловим это таймаутом).
-    // Если сервер мертв, fetch выбросит ошибку мгновенно.
-    
-    // Используем AbortController для таймаута
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-
-    // Пытаемся загрузить https://host:port
-    // Мы ожидаем, что MTProto сервер либо ответит ошибкой (CORS/Protocol), либо просто установит соединение.
-    // Главное - НЕ получить "Failed to fetch" (Connection Refused).
     await fetch(`https://${host}:${proxy.port}`, {
       method: 'GET',
-      mode: 'no-cors', 
-      signal: controller.signal,
-      cache: 'no-store'
+      mode: 'no-cors',
+      signal: AbortSignal.timeout(2000)
     });
-    
-    clearTimeout(timeoutId);
-    // Если код дошел сюда - сервер ответил (даже если это opaque response)
-    connected = true;
-
+    // Успешно (или opaque ответ)
+    const ping = Math.round(performance.now() - startTime);
+    return { working: true, ping, reason: 'Reachable' };
   } catch (e) {
-    // Если ошибка таймаута (2000ms) - сервер жив, но медленный. 
-    // В рамках строгой проверки считаем это "плохим" прокси, но технически он жив.
-    // Однако, для фильтрации "фейковых", мы будем считать таймаут как "Dead" или "Slow/Dead".
-    // Пользователь жаловался на много рабочих, значит таймауты нужно отсекать.
-    if (e.name === 'AbortError') {
-      connected = false; // Таймаут = считаем мёртвым/медленным
-    } else {
-      connected = false; // Ошибка сети = мёртвый
+    const elapsed = performance.now() - startTime;
+    // Быстрая ошибка сети = порт открыт, сервер отвечает
+    if (elapsed < 600) {
+      return { working: true, ping: Math.round(elapsed), reason: 'Port Open' };
     }
+    // Долгая ошибка/таймаут = сервер не отвечает
+    return { working: false, ping: null, reason: 'Timeout/Down' };
   }
-
-  const ping = Math.round(performance.now() - t0);
-  
-  // Рабочий только если DNS ОК И соединение установлено БЫСТРО (< 2000ms)
-  return { working: connected, ping: connected ? ping : null };
 }
 
-// ==================== CHECK ALL ====================
 async function checkAllProxies() {
   if (isChecking || !allProxies.length) return;
   isChecking = true;
 
   const btn = document.getElementById('check-btn');
   btn.disabled = true;
-  btn.textContent = '⏳ Строгая проверка...';
+  btn.textContent = '⏳ Проверка...';
 
   const progressWrap = document.getElementById('progress-wrap');
   const progressFill = document.getElementById('progress-fill');
@@ -841,32 +833,28 @@ async function checkAllProxies() {
   progressWrap.classList.add('visible');
 
   const total = allProxies.length;
-  const batchSize = 10; // Параллельная проверка по 10 прокси
+  const batchSize = 15; // Увеличил пакет для скорости
 
   for (let i = 0; i < total; i += batchSize) {
     const batch = allProxies.slice(i, Math.min(i + batchSize, total));
-    const pct = Math.round((i / total) * 100);
+    const pct = Math.round(((i) / total) * 100);
     progressFill.style.width = pct + '%';
     progressLabel.textContent = `Проверка ${i + 1}-${Math.min(i + batchSize, total)} из ${total}...`;
 
-    // Параллельная обработка батча
     await Promise.all(batch.map(async (proxy) => {
       proxy.status = 'checking';
       updateStats();
       renderProxies();
 
-      const result = await checkProxyDeep(proxy);
+      const result = await checkProxy(proxy);
       proxy.status = result.working ? 'working' : 'dead';
       proxy.ping = result.ping;
-
       return result;
     }));
 
     updateStats();
     renderProxies();
-    
-    // Небольшая задержка между батчами
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 50));
   }
 
   progressFill.style.width = '100%';
@@ -880,10 +868,9 @@ async function checkAllProxies() {
   isChecking = false;
   updateStats();
   renderProxies();
-  showToast(`✅ Строгая проверка завершена: ${working} рабочих`);
+  showToast(`✅ Проверка завершена: ${working} рабочих`);
 }
 
-// ==================== UI FUNCTIONS ====================
 function setFilter(f, btn) {
   currentFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -906,12 +893,10 @@ function renderProxies() {
     return true;
   });
 
-  // Сортировка: рабочие -> без проверки -> мёртвые
   const order = { working: 0, unchecked: 1, checking: 2, dead: 3 };
   filtered.sort((a, b) => {
     const orderDiff = (order[a.status] || 3) - (order[b.status] || 3);
     if (orderDiff !== 0) return orderDiff;
-    // Внутри рабочих сортируем по пингу
     if (a.status === 'working' && b.status === 'working') {
       return (a.ping || 9999) - (b.ping || 9999);
     }
@@ -919,7 +904,7 @@ function renderProxies() {
   });
 
   if (filtered.length === 0) {
-    list.innerHTML = '<div class="no-results"><div class="emoji">🔍</div>Нет прокси для отображения</div>';
+    list.innerHTML = '<div class="no-results"><div class="emoji">🔍</div>Нет прокси</div>';
     return;
   }
 
@@ -1013,7 +998,6 @@ function escapeAttr(str) {
   return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
-// Init
 document.getElementById('st-total').textContent = '0';
 document.getElementById('st-working').textContent = '0';
 document.getElementById('st-dead').textContent = '0';
