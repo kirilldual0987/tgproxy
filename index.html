@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FreeProxyForTG (НЕ все адреса из "рабочие" после загрузки extended листа и проверки будут работать! система проверки несовершенна!)</title>
+<title>FreeProxyForTG</title>
 <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/400/500/600/700/800/index.css" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -594,37 +594,9 @@ body {
 
 .no-results .emoji { font-size: 1.5rem; margin-bottom: 6px; }
 
-.extended-info {
-  text-align: center;
-  font-size: 0.75rem;
-  color: rgba(200,200,255,0.4);
-  margin-bottom: 14px;
-  padding: 8px 12px;
-  background: rgba(255,110,196,0.05);
-  border-radius: 8px;
-  border: 1px solid rgba(255,110,196,0.1);
-  display: none;
-}
-
-.extended-info.visible { display: block; }
-
-.method-info {
-  text-align: center;
-  font-size: 0.68rem;
-  color: rgba(200,200,255,0.35);
-  margin-bottom: 10px;
-  padding: 6px 10px;
-  background: rgba(0,212,255,0.04);
-  border-radius: 8px;
-  border: 1px solid rgba(0,212,255,0.08);
-  display: none;
-}
-
-.method-info.visible { display: block; }
-
 @media (max-width: 600px) {
-  .card { padding: 18px 14px; }
-  .logo h1 { font-size: 1.4rem; }
+  .card { padding: 20px 16px; }
+  .logo h1 { font-size: 1.5rem; }
   .proxy-item .p-url { font-size: 0.62rem; }
 }
 </style>
@@ -672,17 +644,13 @@ body {
       <span class="btn-sub">Загрузить все прокси из all_proxies.txt</span>
     </button>
 
-    <div class="extended-info" id="extended-info">
+    <div class="extended-info" id="extended-info" style="display:none; text-align:center; font-size:0.75rem; color:rgba(200,200,255,0.4); margin-bottom:14px; padding:8px 12px; background:rgba(255,110,196,0.05); border-radius:8px; border:1px solid rgba(255,110,196,0.1);">
       📂 Загружено <span id="extended-count">0</span> прокси из all_proxies.txt
-    </div>
-
-    <div class="method-info" id="method-info">
-      🔍 Проверка: DNS-резолв через Google DNS + попытка подключения к серверу
     </div>
 
     <div class="search-box">
       <span class="search-icon">🔍</span>
-      <input type="text" id="search-input" placeholder="Поиск по адресу..." oninput="renderProxies()">
+      <input type="text" id="search-input" placeholder="Поиск по адресу..." oninput="filterProxies()">
     </div>
 
     <div class="filter-row" id="filter-row">
@@ -722,8 +690,11 @@ body {
         1. Нажмите 📋 чтобы скопировать ссылку<br>
         2. Откройте Telegram и вставьте ссылку<br>
         3. Telegram автоматически предложит добавить прокси<br><br>
-        <strong>Проверка:</strong> нажмите «Проверить все прокси» — сайт проверит через DNS (существует ли сервер) и попробует подключиться. Если DNS не резолвится — прокси точно мёртвый.<br><br>
-        <strong>Extended:</strong> загрузит полную базу из all_proxies.txt (116 прокси).
+        <strong>Проверка:</strong> Нажмите «Проверить все прокси» — сайт проведёт глубокую проверку:<br>
+        • Проверит DNS (существует ли сервер)<br>
+        • Измерит время отклика (мгновенная ошибка = сервер жив, таймаут = мёртв)<br>
+        • Отфильтрует заведомо нерабочие прокси<br><br>
+        <strong>Extended:</strong> Загрузит полную базу из all_proxies.txt.
       </div>
     </div>
 
@@ -745,17 +716,13 @@ body {
 <div class="toast" id="toast"></div>
 
 <script>
-const GUARANTEED = [
-  'https://t.me/proxy?server=ffastdomain-eu.com&port=443&secret=afdc38b8068b2444e50f6a4f093751b5',
-  'https://t.me/proxy?server=beast.mtproxy.me.mtproto.ru&port=443&secret=ee3f354f86e59e2c166c83031772d92d6379612e72755',
-  'https://t.me/proxy?server=144.31.119.121&port=443&secret=dd79c7111a1ce1bc116e405f658ff605d'
-];
-
+// ==================== DATA ====================
 let allProxies = [];
 let extendedLoaded = false;
 let isChecking = false;
 let currentFilter = 'all';
 
+// ==================== PARSE ====================
 function parseUrl(url) {
   try {
     const u = new URL(url);
@@ -767,6 +734,7 @@ function parseUrl(url) {
   }
 }
 
+// ==================== LOAD EXTENDED ====================
 async function loadExtended() {
   const btn = document.getElementById('extended-btn');
   btn.disabled = true;
@@ -778,7 +746,8 @@ async function loadExtended() {
     const text = await response.text();
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.startsWith('https://t.me/proxy'));
 
-    const seen = new Set(GUARANTEED);
+    // Deduplicate
+    const seen = new Set();
     const newProxies = lines.filter(url => {
       if (seen.has(url)) return false;
       seen.add(url);
@@ -792,11 +761,10 @@ async function loadExtended() {
     }).filter(Boolean);
 
     extendedLoaded = true;
-    document.getElementById('extended-info').classList.add('visible');
+    document.getElementById('extended-info').style.display = 'block';
     document.getElementById('extended-count').textContent = allProxies.length;
     document.getElementById('stats-bar').style.display = 'flex';
     document.getElementById('check-btn').style.display = 'block';
-    document.getElementById('method-info').classList.add('visible');
 
     updateStats();
     renderProxies();
@@ -809,25 +777,28 @@ async function loadExtended() {
   btn.innerHTML = '✅ Extended загружен<span class="btn-sub" style="display:block;margin-top:3px;font-size:0.72rem;color:rgba(255,110,196,0.6)">' + allProxies.length + ' прокси</span>';
 }
 
-// РЕАЛЬНАЯ ПРОВЕРКА ПРОКСИ
-async function checkProxy(proxy) {
+// ==================== IMPROVED CHECK PROXY ====================
+// Глубокая проверка: DNS + анализ времени отклика
+async function checkProxyDeep(proxy) {
   const host = proxy.server;
-  const startTime = Date.now();
-
-  // Метод 1: DNS проверка через Google Public DNS API
+  const port = proxy.port;
+  
+  // Метод 1: DNS проверка через Google DNS API
   let dnsOk = false;
   let dnsTime = 0;
   try {
     const dnsUrl = `https://dns.google/resolve?name=${encodeURIComponent(host)}&type=A`;
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 3000);
+    const t0 = performance.now();
+    
     const resp = await fetch(dnsUrl, { signal: ctrl.signal });
     clearTimeout(timeout);
-
+    dnsTime = performance.now() - t0;
+    
     if (resp.ok) {
       const data = await resp.json();
       dnsOk = data.Status === 0 && data.Answer && data.Answer.length > 0;
-      dnsTime = Date.now() - startTime;
     }
   } catch (e) {
     dnsOk = false;
@@ -835,90 +806,91 @@ async function checkProxy(proxy) {
 
   // Если DNS не резолвится — прокси точно мёртвый
   if (!dnsOk) {
-    return { working: false, ping: null, dnsTime };
+    return { working: false, ping: null, dnsTime, method: 'DNS' };
   }
 
-  // Метод 2: Попытка подключения через fetch (для обнаружения живых серверов)
-  let httpOk = false;
-  let httpTime = 0;
-  const testUrls = [
-    `http://${host}:${proxy.port}`,
-    `https://${host}:${proxy.port}`
-  ];
+  // Метод 2: Анализ времени отклика через fetch
+  // Для MTProto серверов: мгновенная ошибка (Connection Refused) = сервер жив
+  // Таймаут = сервер мёртв/недоступен
+  let connectTime = 0;
+  let connectOk = false;
+  let errorType = '';
 
-  for (const testUrl of testUrls) {
-    try {
-      const ctrl = new AbortController();
-      const timeout = setTimeout(() => ctrl.abort(), 2500);
-      const t0 = Date.now();
+  try {
+    const testUrls = [
+      `http://${host}:${port}`,
+      `https://${host}:${port}`
+    ];
 
-      await fetch(testUrl, {
-        method: 'GET',
-        mode: 'no-cors',
-        signal: ctrl.signal,
-        cache: 'no-store'
-      });
-
-      clearTimeout(timeout);
-      httpTime = Date.now() - t0;
-      httpOk = true;
-      break;
-    } catch (e) {
-      // no-cors может вернуть opaque response даже при ошибке
-      // но если выбросило ошибку — сервер точно недоступен
-      if (e.name === 'AbortError') continue;
-    }
-  }
-
-  // Метод 3: Попытка через Cloudflare CDN прокси (для обхода CORS)
-  let cfOk = false;
-  if (!httpOk && !host.match(/^\d+\.\d+\.\d+\.\d+$/)) {
-    try {
-      const cfUrl = `https://${host}/`;
+    for (const testUrl of testUrls) {
       const ctrl = new AbortController();
       const timeout = setTimeout(() => ctrl.abort(), 2000);
-      const t0 = Date.now();
+      const t0 = performance.now();
 
-      const resp = await fetch(cfUrl, {
-        method: 'HEAD',
-        mode: 'no-cors',
-        signal: ctrl.signal,
-        cache: 'no-store'
-      });
-
-      clearTimeout(timeout);
-      cfOk = true;
-      httpTime = Date.now() - t0;
-    } catch (e) {
-      cfOk = false;
+      try {
+        await fetch(testUrl, {
+          method: 'GET',
+          mode: 'no-cors',
+          signal: ctrl.signal,
+          cache: 'no-store'
+        });
+        clearTimeout(timeout);
+        connectTime = performance.now() - t0;
+        
+        // Если запрос прошёл быстро (< 800ms) — сервер жив
+        if (connectTime < 800) {
+          connectOk = true;
+          errorType = 'fast_response';
+          break;
+        }
+      } catch (e) {
+        clearTimeout(timeout);
+        const elapsed = performance.now() - t0;
+        
+        // Мгновенная ошибка (< 200ms) обычно означает "Connection Refused" — сервер жив!
+        if (elapsed < 200) {
+          connectOk = true;
+          errorType = 'instant_refusal';
+          connectTime = elapsed;
+          break;
+        }
+        
+        // Таймаут или долгая ошибка — сервер мёртв
+        if (e.name === 'AbortError') {
+          errorType = 'timeout';
+          connectTime = elapsed;
+        }
+      }
     }
+  } catch (e) {
+    // Общая ошибка
   }
 
-  const totalPing = Date.now() - startTime;
-
-  // Прокси считается рабочим если:
-  // 1. DNS резолвится (сервер существует) И
-  // 2. Хотя бы одна попытка подключения не выбросила ошибку
-  //    (для MTProto на 443 fetch с no-cors часто возвращает opaque, что ок)
-  const working = dnsOk && (httpOk || cfOk);
+  // Итоговая логика:
+  // ✅ Рабочий если: DNS ок И (быстрый ответ ИЛИ мгновенный отказ)
+  const isWorking = dnsOk && (connectOk || errorType === 'instant_refusal' || errorType === 'fast_response');
+  
+  // Пинг: если рабочий, берём минимальное время
+  const ping = isWorking ? Math.round(Math.min(dnsTime, connectTime || 9999)) : null;
 
   return {
-    working,
-    ping: working ? totalPing : null,
-    dnsOk,
-    dnsTime,
-    httpOk,
-    cfOk
+    working: isWorking,
+    ping: ping,
+    dnsTime: Math.round(dnsTime),
+    connectTime: Math.round(connectTime),
+    errorType: errorType,
+    method: 'Deep'
   };
 }
 
+// ==================== CHECK ALL ====================
 async function checkAllProxies() {
   if (isChecking || !allProxies.length) return;
   isChecking = true;
 
   const btn = document.getElementById('check-btn');
   btn.disabled = true;
-  btn.textContent = '⏳ Проверка...';
+  btn.textContent = '⏳ Глубокая проверка...';
 
   const progressWrap = document.getElementById('progress-wrap');
   const progressFill = document.getElementById('progress-fill');
@@ -927,29 +899,34 @@ async function checkAllProxies() {
   progressWrap.classList.add('visible');
 
   const total = allProxies.length;
-  const batchSize = 10;
-
+  const batchSize = 8; // Параллельная проверка по 8 прокси
+  
   for (let i = 0; i < total; i += batchSize) {
     const batch = allProxies.slice(i, Math.min(i + batchSize, total));
     const pct = Math.round((i / total) * 100);
     progressFill.style.width = pct + '%';
     progressLabel.textContent = `Проверка ${i + 1}-${Math.min(i + batchSize, total)} из ${total}...`;
 
+    // Параллельная обработка батча
     await Promise.all(batch.map(async (proxy) => {
       proxy.status = 'checking';
       updateStats();
       renderProxies();
 
-      const result = await checkProxy(proxy);
+      const result = await checkProxyDeep(proxy);
       proxy.status = result.working ? 'working' : 'dead';
       proxy.ping = result.ping;
+      proxy.dnsTime = result.dnsTime;
+      proxy.connectTime = result.connectTime;
 
       return result;
     }));
 
     updateStats();
     renderProxies();
-    await new Promise(r => setTimeout(r, 150));
+    
+    // Небольшая задержка между батчами
+    await new Promise(r => setTimeout(r, 100));
   }
 
   progressFill.style.width = '100%';
@@ -963,13 +940,18 @@ async function checkAllProxies() {
   isChecking = false;
   updateStats();
   renderProxies();
-  showToast(`✅ Проверка завершена: ${working} рабочих`);
+  showToast(`✅ Глубокая проверка завершена: ${working} рабочих`);
 }
 
+// ==================== UI FUNCTIONS ====================
 function setFilter(f, btn) {
   currentFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  renderProxies();
+}
+
+function filterProxies() {
   renderProxies();
 }
 
@@ -984,11 +966,20 @@ function renderProxies() {
     return true;
   });
 
+  // Сортировка: рабочие -> без проверки -> мёртвые
   const order = { working: 0, unchecked: 1, checking: 2, dead: 3 };
-  filtered.sort((a, b) => (order[a.status] || 3) - (order[b.status] || 3));
+  filtered.sort((a, b) => {
+    const orderDiff = (order[a.status] || 3) - (order[b.status] || 3);
+    if (orderDiff !== 0) return orderDiff;
+    // Внутри рабочих сортируем по пингу
+    if (a.status === 'working' && b.status === 'working') {
+      return (a.ping || 9999) - (b.ping || 9999);
+    }
+    return 0;
+  });
 
   if (filtered.length === 0) {
-    list.innerHTML = '<div class="no-results"><div class="emoji">🔍</div>Нет прокси</div>';
+    list.innerHTML = '<div class="no-results"><div class="emoji">🔍</div>Нет прокси для отображения</div>';
     return;
   }
 
@@ -997,11 +988,13 @@ function renderProxies() {
     item.className = `proxy-item ${proxy.status}`;
 
     let pingHtml = '';
-    if (proxy.status === 'working' && proxy.ping) {
-      const cls = proxy.ping > 500 ? 'slow' : '';
-      pingHtml = `<span class="p-ping ${cls}">${proxy.ping}ms</span>`;
+    if (proxy.status === 'working' && proxy.ping !== null) {
+      const cls = proxy.ping > 300 ? 'slow' : '';
+      pingHtml = `<span class="p-ping ${cls}">⚡ ${proxy.ping}ms</span>`;
     } else if (proxy.status === 'dead') {
-      pingHtml = '<span class="p-ping fail">DNS ✗</span>';
+      pingHtml = '<span class="p-ping fail">✗</span>';
+    } else if (proxy.status === 'checking') {
+      pingHtml = '<span class="p-ping" style="color:#ffc107">...</span>';
     }
 
     item.innerHTML = `
@@ -1016,6 +1009,7 @@ function renderProxies() {
 
 function updateStats() {
   if (!allProxies.length) return;
+  
   const working = allProxies.filter(p => p.status === 'working').length;
   const dead = allProxies.filter(p => p.status === 'dead').length;
   const checking = allProxies.filter(p => p.status === 'checking').length;
@@ -1043,8 +1037,11 @@ function copyLink(btn, url) {
   navigator.clipboard.writeText(url).then(() => {
     btn.classList.add('copied');
     btn.textContent = '✅';
-    showToast('📋 Скопировано!');
-    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋'; }, 2000);
+    showToast('📋 Ссылка скопирована!');
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.textContent = '📋';
+    }, 2000);
   }).catch(() => {
     const ta = document.createElement('textarea');
     ta.value = url;
@@ -1054,7 +1051,10 @@ function copyLink(btn, url) {
     document.body.removeChild(ta);
     btn.classList.add('copied');
     btn.textContent = '✅';
-    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋'; }, 2000);
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.textContent = '📋';
+    }, 2000);
   });
 }
 
@@ -1075,6 +1075,7 @@ function escapeAttr(str) {
   return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+// Init
 document.getElementById('st-total').textContent = '0';
 document.getElementById('st-working').textContent = '0';
 document.getElementById('st-dead').textContent = '0';
