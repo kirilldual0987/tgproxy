@@ -554,7 +554,7 @@ body {
         <div class="guaranteed-item">
           <span class="g-check">✅</span>
           <span class="g-url">144.31.119.121:443</span>
-          <button class="g-copy" onclick="copyLink(this, 'https://t.me/proxy?server=144.31.119.121&port=443&secret=dd79c7111a1ce1bc116e405f658ff6f05d')">📋</button>
+          <button class="g-copy" onclick="copyLink(this, 'https://t.me/proxy?server=144.31.119.121&port=443&secret=dd79c7111a1ce1bc116e405f658ff605d')">📋</button>
         </div>
       </div>
     </div>
@@ -562,12 +562,12 @@ body {
     <div class="divider"></div>
 
     <button class="extended-btn" id="extended-btn" onclick="loadExtended()">
-      📂 Режим-extended — загрузить все прокси
-      <span class="btn-sub">Загрузит 2300+ прокси из all_proxies.txt</span>
+      📂 Режим-extended — если ни один не работает
+      <span class="btn-sub">Загрузить все прокси из all_proxies.txt + GitHub</span>
     </button>
 
     <div id="extended-info" style="display:none; text-align:center; font-size:0.75rem; color:rgba(200,200,255,0.4); margin-bottom:14px; padding:8px 12px; background:rgba(255,110,196,0.05); border-radius:8px; border:1px solid rgba(255,110,196,0.1);">
-      📂 Загружено <span id="extended-count">0</span> прокси
+      📂 Загружено <span id="extended-count">0</span> прокси из 2 источников
     </div>
 
     <div class="search-box">
@@ -590,7 +590,7 @@ body {
     </div>
 
     <div class="check-info" id="check-info" style="display:none;">
-      ⚠️ Жесткая проверка: Если сервер не отвечает за 1.2с → Мёртв.
+      🔍 Жесткая проверка: только быстрые ответы (<800мс) считаются рабочими. Остальные — ❌
     </div>
 
     <button class="check-all-btn" id="check-btn" onclick="checkAllProxies()" style="display:none;">
@@ -618,8 +618,8 @@ body {
         1. Нажмите 📋 чтобы скопировать ссылку<br>
         2. Откройте Telegram и вставьте ссылку<br>
         3. Telegram автоматически предложит добавить прокси<br><br>
-        <strong>Extended режим:</strong> Загружает полный список из файла `all_proxies.txt` (2300+ шт).<br><br>
-        <strong>Жесткая проверка:</strong> Сайт проверяет скорость ответа сервера. Если сервер не отвечает за 1.2 секунды — он помечается как ❌ мёртвый. Это отсеивает пустые домены и зависшие серверы.
+        <strong>Жесткая проверка:</strong> Сайт проверяет домен через Google DNS и пытается подключиться. Только если сервер отвечает <800мс — он помечается как ✅ рабочий. Таймауты и медленные ответы = ❌.<br><br>
+        <strong>Extended:</strong> Загружает прокси из вашего файла + внешнего репозитория GitHub.
       </div>
     </div>
 
@@ -645,11 +645,12 @@ body {
 const GUARANTEED = [
   'https://t.me/proxy?server=ffastdomain-eu.com&port=443&secret=afdc38b8068b2444e50f6a4f093751b5',
   'https://t.me/proxy?server=beast.mtproxy.me.mtproto.ru&port=443&secret=ee3f354f86e59e2c166c83031772d92d6379612e72755',
-  'https://t.me/proxy?server=144.31.119.121&port=443&secret=dd79c7111a1ce1bc116e405f658ff6f05d'
+  'https://t.me/proxy?server=144.31.119.121&port=443&secret=dd79c7111a1ce1bc116e405f658ff605d'
 ];
 
 // ==================== STATE ====================
 let allProxies = [];
+let extendedLoaded = false;
 let isChecking = false;
 let currentFilter = 'all';
 
@@ -682,97 +683,117 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ==================== LOAD EXTENDED ====================
+// ==================== LOAD EXTENDED (2 SOURCES) ====================
 async function loadExtended() {
   const btn = document.getElementById('extended-btn');
   btn.disabled = true;
-  btn.textContent = '⏳ Загрузка...';
+  btn.textContent = '⏳ Загрузка из 2 источников...';
 
-  try {
-    // Load from local file
-    const response = await fetch('./all_proxies.txt');
-    if (!response.ok) throw new Error('Файл all_proxies.txt не найден');
-    const text = await response.text();
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.startsWith('https://t.me/proxy?'));
+  const sources = [
+    { url: './all_proxies.txt', label: 'Локальный файл' },
+    { url: 'https://raw.githubusercontent.com/SoliSpirit/mtproto/refs/heads/master/all_proxies.txt', label: 'GitHub SoliSpirit' }
+  ];
 
-    // Deduplicate
-    const seen = new Set(GUARANTEED);
-    const uniqueLines = [];
-    for (const line of lines) {
-      if (!seen.has(line)) {
-        seen.add(line);
-        uniqueLines.push(line);
+  const allLines = [];
+  const seen = new Set(GUARANTEED);
+
+  for (const source of sources) {
+    try {
+      const response = await fetch(source.url);
+      if (!response.ok) {
+        console.warn(`⚠️ Не удалось загрузить ${source.label}: ${response.status}`);
+        continue;
       }
+      const text = await response.text();
+      const lines = text.split('\n')
+        .map(l => l.trim())
+        .filter(l => l.startsWith('https://t.me/proxy?'));
+      
+      for (const line of lines) {
+        if (!seen.has(line)) {
+          seen.add(line);
+          allLines.push(line);
+        }
+      }
+      console.log(`✅ Загружено ${lines.length} строк из ${source.label}`);
+    } catch (e) {
+      console.error(`❌ Ошибка при загрузке ${source.label}:`, e);
     }
-
-    allProxies = uniqueLines.map(url => {
-      const parsed = parseUrl(url);
-      if (!parsed) return null;
-      return { ...parsed, status: 'unchecked', ping: null };
-    }).filter(Boolean);
-
-    document.getElementById('extended-info').style.display = 'block';
-    document.getElementById('extended-count').textContent = allProxies.length;
-    document.getElementById('stats-bar').style.display = 'flex';
-    document.getElementById('check-btn').style.display = 'block';
-    document.getElementById('check-info').style.display = 'block';
-
-    updateStats();
-    renderProxies();
-    showToast(`📂 Загружено ${allProxies.length} прокси`);
-    
-    btn.innerHTML = '✅ Extended загружен<span class="btn-sub" style="display:block;margin-top:3px;font-size:0.72rem;color:rgba(255,110,196,0.6)">' + allProxies.length + ' прокси</span>';
-
-  } catch (e) {
-    showToast('❌ Ошибка: ' + e.message);
-    btn.disabled = false;
-    btn.textContent = '📂 Режим-extended';
   }
+
+  if (allLines.length === 0) {
+    showToast('❌ Не удалось загрузить прокси из источников');
+    btn.disabled = false;
+    btn.innerHTML = '📂 Режим-extended<span class="btn-sub" style="display:block;margin-top:3px;font-size:0.72rem;color:rgba(255,110,196,0.6)">Загрузить все прокси из all_proxies.txt</span>';
+    return;
+  }
+
+  allProxies = allLines.map(url => {
+    const parsed = parseUrl(url);
+    if (!parsed) return null;
+    return { ...parsed, status: 'unchecked', ping: null };
+  }).filter(Boolean);
+
+  document.getElementById('extended-info').style.display = 'block';
+  document.getElementById('extended-count').textContent = allProxies.length;
+  document.getElementById('stats-bar').style.display = 'flex';
+  document.getElementById('check-btn').style.display = 'block';
+  document.getElementById('check-info').style.display = 'block';
+
+  updateStats();
+  renderProxies();
+  showToast(`📂 Загружено ${allProxies.length} уникальных прокси из 2 источников`);
+
+  btn.disabled = false;
+  btn.innerHTML = '✅ Extended загружен<span class="btn-sub" style="display:block;margin-top:3px;font-size:0.72rem;color:rgba(255,110,196,0.6)">' + allProxies.length + ' прокси</span>';
 }
 
-// ==================== HARD CHECK ====================
+// ==================== STRICT PROXY CHECK ====================
 async function checkProxy(proxy) {
   const host = proxy.server;
-  const port = proxy.port;
   
-  // Жесткий таймаут 1200мс. Если сервер медленный — он бесполезен для TG.
-  const timeout = 1200;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-  
-  const startTime = performance.now();
-
+  // 1. DNS Check via Google DNS API
+  let dnsOk = false;
   try {
-    // Пробуем подключиться.
-    // MTProto серверы обычно отвечают мгновенно ошибкой протокола или opaque ответом.
-    // Мертвые серверы (черные дыры) висят до таймаута.
-    await fetch(`https://${host}:${port}`, {
-      mode: 'no-cors',
-      signal: controller.signal,
-      cache: 'no-store'
-    });
-    
-    clearTimeout(timer);
-    const elapsed = performance.now() - startTime;
-    return { working: true, ping: Math.round(elapsed) };
+    const dnsUrl = `https://dns.google/resolve?name=${encodeURIComponent(host)}&type=A`;
+    const resp = await fetch(dnsUrl, { signal: AbortSignal.timeout(2000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      dnsOk = data.Status === 0 && data.Answer && data.Answer.length > 0;
+    }
+  } catch (e) { dnsOk = false; }
 
-  } catch (e) {
-    clearTimeout(timer);
+  if (!dnsOk) return { working: false, ping: null, reason: 'DNS Fail' };
+
+  // 2. Connection Check — STRICT MODE
+  // Только если сервер отвечает БЫСТРО (<800мс) — считаем рабочим
+  // Всё остальное (таймаут, медленный ответ, ошибка) = мёртвый
+  const startTime = performance.now();
+  
+  try {
+    await fetch(`https://${host}:${proxy.port}`, {
+      method: 'GET',
+      mode: 'no-cors',
+      signal: AbortSignal.timeout(2000)
+    });
     const elapsed = performance.now() - startTime;
     
-    // Если ошибка произошла БЫСТРО (меньше таймаута), значит сервер ответил "Нет" или "Ошибка".
-    // Это значит, что сервер ЖИВ, но не понимает HTTP.
-    // Если ошибка таймаута — сервер мертв.
-    if (e.name === 'AbortError') {
-      return { working: false, ping: null }; // Timeout = Dead
+    // Только если ответ пришел быстро — рабочий
+    if (elapsed < 800) {
+      return { working: true, ping: Math.round(elapsed), reason: 'Fast Response' };
+    } else {
+      return { working: false, ping: null, reason: 'Too Slow' };
+    }
+  } catch (e) {
+    const elapsed = performance.now() - startTime;
+    
+    // Быстрая ошибка сети (<200мс) = сервер жив, но не MTProto — считаем рабочим для браузера
+    if (elapsed < 200) {
+      return { working: true, ping: Math.round(elapsed), reason: 'Fast Refusal' };
     }
     
-    // Быстрая ошибка сети = Server is up but refused connection
-    if (elapsed < timeout) {
-      return { working: true, ping: Math.round(elapsed) };
-    }
-    
-    return { working: false, ping: null };
+    // Всё остальное = мёртвый
+    return { working: false, ping: null, reason: 'Timeout/Error' };
   }
 }
 
@@ -792,7 +813,7 @@ async function checkAllProxies() {
   progressWrap.classList.add('visible');
 
   const total = allProxies.length;
-  const batchSize = 15; // Пакетная обработка для скорости
+  const batchSize = 8; // Уменьшил пакет для стабильности
 
   for (let i = 0; i < total; i += batchSize) {
     const batch = allProxies.slice(i, Math.min(i + batchSize, total));
@@ -813,7 +834,7 @@ async function checkAllProxies() {
 
     updateStats();
     renderProxies();
-    await new Promise(r => setTimeout(r, 50)); // Небольшая пауза
+    await new Promise(r => setTimeout(r, 100));
   }
 
   progressFill.style.width = '100%';
@@ -827,7 +848,7 @@ async function checkAllProxies() {
   isChecking = false;
   updateStats();
   renderProxies();
-  showToast(`✅ Проверка завершена: ${working} рабочих`);
+  showToast(`✅ Жесткая проверка завершена: ${working} рабочих`);
 }
 
 // ==================== UI FUNCTIONS ====================
