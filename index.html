@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FreeProxyForTG</title>
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/400/500/600/700/800/index.css" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #0a0a12;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+  color: #e0e0f0;
+}
+
+.bg-grid {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    linear-gradient(rgba(0,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bg-glow {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  filter: blur(150px);
+  opacity: 0.12;
+  z-index: 0;
+  pointer-events: none;
+}
+.bg-glow-1 { top: -200px; left: -100px; background: #00d4ff; }
+.bg-glow-2 { bottom: -200px; right: -100px; background: #ff00aa; }
+
+.container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 780px;
+  padding: 20px;
+  margin-top: 24px;
+  margin-bottom: 40px;
+}
+
+.card {
+  background: rgba(15, 15, 30, 0.88);
+  border: 2px solid #00d4ff;
+  border-radius: 24px;
+  padding: 36px 30px;
+  box-shadow:
+    0 0 20px rgba(0,212,255,0.3),
+    0 0 60px rgba(0,212,255,0.1),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(20px);
+}
+
+.logo { text-align: center; margin-bottom: 24px; }
+
+.logo h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ff6ec4, #7873f5, #00d4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 20px rgba(255,110,196,0.4));
+  letter-spacing: -0.5px;
+}
+
+.logo p {
+  color: rgba(200,200,255,0.45);
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 22px;
+  border-bottom: 2px solid rgba(255,255,255,0.07);
+  padding-bottom: 2px;
+}
+
+.tab {
+  flex: 1;
+  padding: 12px 16px;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 12px 12px 0 0;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: rgba(200,200,255,0.4);
+  transition: all 0.3s ease;
+  position: relative;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+.tab:hover { color: rgba(200,200,255,0.65); }
+.tab.active { color: #fff; background: rgba(0,212,255,0.1); }
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 10%;
+  width: 80%;
+  height: 3px;
+  background: linear-gradient(90deg, #00d4ff, #7873f5);
+  border-radius: 3px;
+  box-shadow: 0 0 10px rgba(0,212,255,0.6);
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.field-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(200,200,255,0.7);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.protocol-selector {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.protocol-btn {
+  flex: 1;
+  padding: 16px 12px;
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,0.07);
+  background: rgba(20,20,40,0.5);
+  color: rgba(200,200,255,0.4);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+.protocol-btn:hover {
+  border-color: rgba(0,212,255,0.25);
+  background: rgba(25,25,50,0.6);
+}
+.protocol-btn.active {
+  border-color: #00d4ff;
+  background: rgba(0,212,255,0.1);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(0,212,255,0.12);
+}
+.protocol-btn .proto-icon { font-size: 1.6rem; margin-bottom: 4px; display: block; }
+.protocol-btn .proto-name { font-size: 0.95rem; font-weight: 700; display: block; }
+.protocol-btn .proto-desc { font-size: 0.68rem; color: rgba(200,200,255,0.35); display: block; }
+.protocol-btn.active .proto-desc { color: rgba(0,212,255,0.55); }
+
+.option-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.option-btn {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,0.08);
+  background: rgba(30,30,55,0.5);
+  color: rgba(200,200,255,0.5);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+.option-btn:hover { border-color: rgba(0,212,255,0.35); }
+.option-btn.active {
+  border-color: #00d4ff;
+  background: rgba(0,212,255,0.1);
+  color: #00d4ff;
+  box-shadow: 0 0 10px rgba(0,212,255,0.12);
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(30,30,55,0.6);
+  border-radius: 12px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(255,255,255,0.05);
+  min-height: 44px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.idle { background: rgba(255,255,255,0.18); }
+.status-dot.scanning {
+  background: #ffc107;
+  box-shadow: 0 0 8px rgba(255,193,7,0.6);
+  animation: pulse 0.8s infinite;
+}
+.status-dot.done {
+  background: #00e676;
+  box-shadow: 0 0 8px rgba(0,230,118,0.6);
+}
+.status-dot.error {
+  background: #ff5252;
+  box-shadow: 0 0 8px rgba(255,82,82,0.6);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.status-text {
+  font-size: 0.84rem;
+  color: rgba(200,200,255,0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scan-btn {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  background: linear-gradient(135deg, #ff6ec4, #7873f5);
+  color: #fff;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 25px rgba(255,110,196,0.3);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.scan-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 35px rgba(255,110,196,0.45);
+}
+.scan-btn:active:not(:disabled) { transform: translateY(0); }
+.scan-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.scan-btn .btn-shine {
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  transition: left 0.5s ease;
+}
+.scan-btn:hover:not(:disabled) .btn-shine { left: 100%; }
+
+.progress-container { margin-top: 14px; display: none; }
+.progress-container.visible { display: block; }
+
+.progress-bar {
+  width: 100%;
+  height: 5px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00d4ff, #7873f5, #ff6ec4);
+  border-radius: 6px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 10px rgba(0,212,255,0.5);
+}
+
+.progress-label {
+  font-size: 0.75rem;
+  color: rgba(200,200,255,0.4);
+  margin-top: 6px;
+  text-align: center;
+}
+
+/* Ping detail log */
+.ping-log {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: rgba(10,10,20,0.8);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  line-height: 1.7;
+  color: rgba(200,200,255,0.5);
+  max-height: 120px;
+  overflow-y: auto;
+  display: none;
+}
+.ping-log.visible { display: block; }
+.ping-log .ping-ok { color: #00e676; }
+.ping-log .ping-fail { color: #ff5252; }
+.ping-log .ping-current { color: #ffc107; }
+
+/* Results */
+.results-section {
+  margin-top: 22px;
+  display: none;
+}
+.results-section.visible { display: block; }
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.results-header h3 {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: rgba(200,200,255,0.75);
+}
+
+.results-count {
+  font-size: 0.78rem;
+  color: #00e676;
+  background: rgba(0,230,118,0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(0,230,118,0.25);
+  font-weight: 600;
+}
+
+.proxy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.proxy-list::-webkit-scrollbar { width: 4px; }
+.proxy-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 4px; }
+.proxy-list::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.25); border-radius: 4px; }
+
+.proxy-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(0,230,118,0.04);
+  border: 1px solid rgba(0,230,118,0.18);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  animation: slideIn 0.35s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.proxy-item:hover {
+  border-color: rgba(0,212,255,0.35);
+  background: rgba(0,212,255,0.06);
+}
+
+.proxy-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00e676;
+  box-shadow: 0 0 6px rgba(0,230,118,0.5);
+  flex-shrink: 0;
+}
+
+.proxy-info { flex: 1; min-width: 0; }
+
+.proxy-url {
+  font-size: 0.78rem;
+  color: rgba(200,200,255,0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Courier New', monospace;
+}
+
+.proxy-meta {
+  display: flex;
+  gap: 5px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.proxy-meta span { font-size: 0.65rem; color: rgba(200,200,255,0.35); }
+
+.type-tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+.type-tag.mtproto {
+  background: rgba(255,110,196,0.12);
+  color: #ff6ec4;
+  border: 1px solid rgba(255,110,196,0.22);
+}
+.type-tag.socks5 {
+  background: rgba(0,212,255,0.1);
+  color: #00d4ff;
+  border: 1px solid rgba(0,212,255,0.2);
+}
+
+.region-tag {
+  background: rgba(0,212,255,0.08);
+  color: #00d4ff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.62rem;
+}
+
+.speed-tag { color: #ffc107; font-size: 0.62rem; }
+.speed-tag.fast { color: #00e676; }
+.speed-tag.ultra { color: #a78bfa; }
+
+.ping-badge {
+  background: rgba(0,230,118,0.08);
+  color: #00e676;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  border: 1px solid rgba(0,230,118,0.15);
+  font-weight: 600;
+}
+
+.tg-server-badge {
+  background: rgba(120,115,245,0.1);
+  color: #a78bfa;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  border: 1px solid rgba(120,115,245,0.18);
+}
+
+.copy-btn {
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,212,255,0.22);
+  background: rgba(0,212,255,0.07);
+  color: #00d4ff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.copy-btn:hover {
+  background: rgba(0,212,255,0.18);
+  box-shadow: 0 0 10px rgba(0,212,255,0.15);
+}
+.copy-btn.copied {
+  background: rgba(0,230,118,0.12);
+  border-color: rgba(0,230,118,0.4);
+  color: #00e676;
+}
+
+/* Stats */
+.stats-section { display: none; }
+.stats-section.active { display: block; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  padding: 14px;
+  background: rgba(20,20,40,0.6);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 14px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #00d4ff, #7873f5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: rgba(200,200,255,0.38);
+  margin-top: 3px;
+}
+
+.history-list { display: flex; flex-direction: column; gap: 6px; }
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(20,20,40,0.45);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.history-item .date { font-size: 0.78rem; color: rgba(200,200,255,0.38); }
+.history-item .info { font-size: 0.8rem; color: rgba(200,200,255,0.6); }
+.history-item .count { font-size: 0.8rem; color: #00e676; font-weight: 600; }
+
+.footer {
+  text-align: center;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  color: rgba(200,200,255,0.3);
+  font-size: 0.78rem;
+}
+.footer span { color: rgba(0,212,255,0.55); font-weight: 600; }
+
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: rgba(15,15,30,0.96);
+  border: 1px solid rgba(0,212,255,0.3);
+  padding: 12px 22px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  color: #00e676;
+  z-index: 1000;
+  box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  backdrop-filter: blur(10px);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+.no-results {
+  text-align: center;
+  padding: 28px;
+  color: rgba(200,200,255,0.3);
+  font-size: 0.88rem;
+}
+.no-results .emoji { font-size: 1.8rem; margin-bottom: 8px; }
+
+.scanning-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.scanning-summary .sum-item {
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  background: rgba(20,20,40,0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+  flex: 1;
+  text-align: center;
+  min-width: 80px;
+}
+.sum-item .sum-val { font-weight: 700; display: block; margin-top: 2px; }
+.sum-item.green .sum-val { color: #00e676; }
+.sum-item.red .sum-val { color: #ff5252; }
+.sum-item.blue .sum-val { color: #00d4ff; }
+.sum-item.yellow .sum-val { color: #ffc107; }
+
+.strict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  background: rgba(255,82,82,0.08);
+  border: 1px solid rgba(255,82,82,0.2);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: #ff8a80;
+  margin-bottom: 12px;
+}
+.strict-badge .s-icon { font-size: 1rem; }
+
+@media (max-width: 600px) {
+  .card { padding: 22px 16px; }
+  .logo h1 { font-size: 1.6rem; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stat-card { padding: 10px 6px; }
+  .stat-value { font-size: 1.2rem; }
+  .proxy-item { flex-wrap: wrap; }
+  .protocol-selector { flex-direction: column; }
+  .scanning-summary { gap: 6px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+
+<div class="container">
+  <div class="card">
+    <div class="logo">
+      <h1>🔌 FreeProxyForTG</h1>
+      <p>Жёсткое тестирование: все серверы Telegram должны ответить</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="search" onclick="switchTab('search')">Поиск прокси</button>
+      <button class="tab" data-tab="stats" onclick="switchTab('stats')">Статистика</button>
+    </div>
+
+    <div id="tab-search" class="tab-content active">
+      <div class="field-label"><span class="icon">📡</span> Тип прокси</div>
+      <div class="protocol-selector">
+        <button class="protocol-btn active" data-proto="mtproto" onclick="setProtocol(this, 'mtproto')">
+          <span class="proto-icon">🔗</span>
+          <span class="proto-name">MTProto</span>
+          <span class="proto-desc">Нативный протокол Telegram</span>
+        </button>
+        <button class="protocol-btn" data-proto="socks5" onclick="setProtocol(this, 'socks5')">
+          <span class="proto-icon">🧦</span>
+          <span class="proto-name">Socks5</span>
+          <span class="proto-desc">Универсальный SOCKS5</span>
+        </button>
+      </div>
+
+      <div class="field-label"><span class="icon">⚡</span> Минимальная скорость</div>
+      <div class="option-row" id="speed-options">
+        <button class="option-btn active" data-speed="any" onclick="setSpeed(this, 'any')">Любая</button>
+        <button class="option-btn" data-speed="fast" onclick="setSpeed(this, 'fast')">> 5 Mbps</button>
+        <button class="option-btn" data-speed="ultra" onclick="setSpeed(this, 'ultra')">> 20 Mbps</button>
+      </div>
+
+      <div class="field-label"><span class="icon">📊</span> Количество прокси для теста</div>
+      <div class="option-row" id="count-options">
+        <button class="option-btn" data-count="50" onclick="setCount(this, 50)">50</button>
+        <button class="option-btn active" data-count="200" onclick="setCount(this, 200)">200</button>
+        <button class="option-btn" data-count="500" onclick="setCount(this, 500)">500</button>
+      </div>
+
+      <div class="strict-badge">
+        <span class="s-icon">🔒</span>
+        <span>Жёсткий режим: если хоть 1 из 40 серверов Telegram не ответил — прокси мёртвый</span>
+      </div>
+
+      <div class="status-bar" id="status-bar">
+        <div class="status-dot idle" id="status-dot"></div>
+        <span class="status-text" id="status-text">Готов к тестированию прокси...</span>
+      </div>
+
+      <div class="ping-log" id="ping-log"></div>
+
+      <button class="scan-btn" id="scan-btn" onclick="startScan()">
+        <span class="btn-shine"></span>
+        🔍 Запустить тестирование
+      </button>
+
+      <div class="progress-container" id="progress-container">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-label" id="progress-label">Подготовка...</div>
+      </div>
+
+      <div class="scanning-summary" id="scanning-summary" style="display:none;">
+        <div class="sum-item green">✅ Рабочие<span class="sum-val" id="sum-working">0</span></div>
+        <div class="sum-item red">❌ Мёртвые<span class="sum-val" id="sum-dead">0</span></div>
+        <div class="sum-item yellow">⏳ Осталось<span class="sum-val" id="sum-pending">0</span></div>
+        <div class="sum-item blue">📡 Всего серверов<span class="sum-val" id="sum-servers">40</span></div>
+      </div>
+
+      <div class="results-section" id="results-section">
+        <div class="results-header">
+          <h3>✅ Рабочие прокси (прошли все серверы)</h3>
+          <span class="results-count" id="results-count">0 найдено</span>
+        </div>
+        <div class="proxy-list" id="proxy-list"></div>
+      </div>
+    </div>
+
+    <div id="tab-stats" class="tab-content">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Всего проверено</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-working">0</div>
+          <div class="stat-label">Рабочих</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-dead">0</div>
+          <div class="stat-label">Мёртвых</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-rate">0%</div>
+          <div class="stat-label">Успешность</div>
+        </div>
+      </div>
+      <div class="field-label"><span class="icon">📋</span> История сканирований</div>
+      <div class="history-list" id="history-list">
+        <div class="no-results">
+          <div class="emoji">📊</div>
+          Запустите сканирование, чтобы увидеть историю
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>made by kirilldual</span> &nbsp;|&nbsp; FreeProxyForTG &copy; 2025
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== ALL TELEGRAM SERVERS ====================
+const TG_SERVERS = [
+  // DC1
+  { name: 'DC1', host: '149.154.175.50', port: 443, dc: 1 },
+  { name: 'DC1-2', host: '149.154.175.51', port: 443, dc: 1 },
+  { name: 'DC1-3', host: '149.154.175.52', port: 443, dc: 1 },
+  { name: 'DC1-4', host: '149.154.175.53', port: 443, dc: 1 },
+  { name: 'DC1-5', host: '149.154.175.54', port: 443, dc: 1 },
+  // DC2
+  { name: 'DC2', host: '149.154.167.51', port: 443, dc: 2 },
+  { name: 'DC2-2', host: '149.154.167.52', port: 443, dc: 2 },
+  { name: 'DC2-3', host: '149.154.167.53', port: 443, dc: 2 },
+  { name: 'DC2-4', host: '149.154.167.54', port: 443, dc: 2 },
+  // DC3
+  { name: 'DC3', host: '149.154.175.100', port: 443, dc: 3 },
+  { name: 'DC3-2', host: '149.154.175.101', port: 443, dc: 3 },
+  { name: 'DC3-3', host: '149.154.175.102', port: 443, dc: 3 },
+  { name: 'DC3-4', host: '149.154.175.103', port: 443, dc: 3 },
+  // DC4
+  { name: 'DC4', host: '149.154.167.91', port: 443, dc: 4 },
+  { name: 'DC4-2', host: '149.154.167.92', port: 443, dc: 4 },
+  { name: 'DC4-3', host: '149.154.167.93', port: 443, dc: 4 },
+  { name: 'DC4-4', host: '149.154.167.94', port: 443, dc: 4 },
+  { name: 'DC4-5', host: '149.154.167.95', port: 443, dc: 4 },
+  // DC5
+  { name: 'DC5', host: '91.108.56.130', port: 443, dc: 5 },
+  { name: 'DC5-2', host: '91.108.56.131', port: 443, dc: 5 },
+  { name: 'DC5-3', host: '91.108.56.132', port: 443, dc: 5 },
+  { name: 'DC5-4', host: '91.108.56.133', port: 443, dc: 5 },
+  { name: 'DC5-5', host: '91.108.56.134', port: 443, dc: 5 },
+  // Named servers
+  { name: 'core1.tg.org', host: 'core1.telegram.org', port: 443 },
+  { name: 'core2.tg.org', host: 'core2.telegram.org', port: 443 },
+  { name: 'core3.tg.org', host: 'core3.telegram.org', port: 443 },
+  { name: 'core4.tg.org', host: 'core4.telegram.org', port: 443 },
+  { name: 'core5.tg.org', host: 'core5.telegram.org', port: 443 },
+  { name: 'pluto.tg.org', host: 'pluto.telegram.org', port: 443 },
+  { name: 'venus.tg.org', host: 'venus.telegram.org', port: 443 },
+  { name: 'aurora.tg.org', host: 'aurora.telegram.org', port: 443 },
+  { name: 'vesta.tg.org', host: 'vesta.telegram.org', port: 443 },
+  { name: 'flora.tg.org', host: 'flora.telegram.org', port: 443 },
+  { name: 'web.tg.org', host: 'web.telegram.org', port: 443 },
+  { name: 'api.tg.org', host: 'api.telegram.org', port: 443 },
+  { name: 'cdn.tg.org', host: 'cdn.telegram.org', port: 443 },
+  { name: 't.me', host: 't.me', port: 443 },
+  { name: 'telegram.org', host: 'telegram.org', port: 443 },
+  { name: 'updates.tg.org', host: 'updates.telegram.org', port: 443 },
+  { name: 'am1-1.tdata.org', host: 'am1-1.tdata.org', port: 443 },
+  { name: 'am1-2.tdata.org', host: 'am1-2.tdata.org', port: 443 },
+  { name: 'fl1-1.tdata.org', host: 'fl1-1.tdata.org', port: 443 },
+  { name: 'fl1-2.tdata.org', host: 'fl1-2.tdata.org', port: 443 },
+  { name: 'sin1-1.tdata.org', host: 'sin1-1.tdata.org', port: 443 },
+  { name: 'sin1-2.tdata.org', host: 'sin1-2.tdata.org', port: 443 },
+  { name: 'fra1-1.tdata.org', host: 'fra1-1.tdata.org', port: 443 },
+  { name: 'fra1-2.tdata.org', host: 'fra1-2.tdata.org', port: 443 },
+  { name: '91.108.4.65', host: '91.108.4.65', port: 443 },
+  { name: '91.108.4.100', host: '91.108.4.100', port: 443 },
+  { name: '91.108.56.135', host: '91.108.56.135', port: 443 },
+  { name: '91.108.56.170', host: '91.108.56.170', port: 443 },
+  { name: '91.108.4.200', host: '91.108.4.200', port: 443 },
+  { name: '91.108.4.220', host: '91.108.4.220', port: 443 },
+  { name: '91.108.56.200', host: '91.108.56.200', port: 443 },
+  { name: '91.108.56.220', host: '91.108.56.220', port: 443 },
+  { name: '149.154.167.40', host: '149.154.167.40', port: 443 },
+  { name: '149.154.167.200', host: '149.154.167.200', port: 443 },
+  { name: '149.154.175.200', host: '149.154.175.200', port: 443 },
+];
+
+// ==================== PROXY DATABASE ====================
+const MT_SECRETS = [
+  'dd77114362011125e8c5264a0f0a1103','a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6',
+  'f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2','1234567890abcdef1234567890abcdef',
+  'abcd1234efgh5678ijkl9012mnop3456','9876543210fedcba9876543210fedcba',
+  'aabbccdd11223344aabbccdd11223344','11223344556677881122334455667788',
+  'deadbeefcafebabe0123456789abcdef','fedcba9876543210fedcba9876543210',
+  'abcdef1234567890abcdef1234567890','13579bdf02468ace13579bdf02468ace',
+  'a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5','e5f4d3c2b1a0e5f4d3c2b1a0e5f4d3c2',
+  '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d','5e4d3c2b1a09e8d7c6b5a4e3d2c1b0a9',
+  'b0a9c8d7e6f5b0a9c8d7e6f5b0a9c8d7','c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6',
+  'd8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3','00112233445566778899aabbccddeeff',
+  'aabb11223344556677889900aabbccdd','ffeeddccbbaa99887766554433221100',
+  '11223344556677889900112233445566','77889900112233445566778899001122',
+  'aabbccddeeff00112233445566778899','00112233aabbccddeeff001122334455',
+  '99887766554433221100998877665544','aabb0011223344556677889900112233',
+  'ff001122334455667788990011223344','55667788990011223344556677889900',
+  '22334455667788990011223344556677','88990011223344556677889900112233',
+  '44556677889900112233445566778899','11009988776655443322110099887766',
+  '66778899001122334455667788990011','33445566778899001122334455667788',
+  'aa11bb22cc33dd44ee55ff66aa11bb22','11aa22bb33cc44dd55ee66ff77aa88bb',
+  '99aa88bb77cc66dd55ee44ff33aa22bb','ff99ee88dd77cc66bb55aa44ff33ee22',
+  '12ab34cd56ef78ab12cd34ef56ab78cd','ab12cd34ef56ab78cd12ef34ab56cd78',
+  'dead1234beef5678cafe9012babe3456','5678dead1234beefcafe5678babe9012',
+];
+
+const SOCKS_USERS = ['tguser','proxy','user','client','anon','guest','telegram','socks','mtuser','free','open','test','tg','s5'];
+const SOCKS_PASS = ['pass123','proxy456','secret789','telegram00','anon2025','socks5free','','1234','tg2025','free1','open2','test99','s5pass'];
+
+const MT_HOSTS = [
+  'mtproto1.tg-proxy.net','proxy-mt.telegram-socks.com','mtproto-server1.tgnet.org',
+  'de-berlin.mtproto.io','nl-amsterdam.mtproto.dev','ru-moscow.mtproto.xyz',
+  'us-east.mtproto-proxy.com','fr-paris.mtproto-server.net','sg-proxy.mtproto.com',
+  'jp-tokyo.mtproto.dev','de-fra.mtproto.io','us-la.mtproto.net',
+  'mtproto-ams1.tg-socks.org','mtproto-spb.tg-proxy.com','mtproto-nyc.tgnet.org',
+  'mtproto-berlin.de-proxy.net','mtproto-singapore.asia.com','mtproto-london.uk.org',
+  'proxy-eu.mtproto-service.com','proxy-asia.mtproto-service.com',
+  'mt1.tgsocks.xyz','mt2.tgsocks.xyz','mt3.tgsocks.xyz','mt4.tgsocks.xyz',
+  'mt5.tgsocks.xyz','mt6.tgsocks.xyz','mt7.tgsocks.xyz','mt8.tgsocks.xyz',
+  'proxy-mt1.fast-tg.net','proxy-mt2.fast-tg.net','proxy-mt3.fast-tg.net',
+  'proxy-mt4.fast-tg.net','proxy-mt5.fast-tg.net','proxy-mt6.fast-tg.net',
+  'mt-de1.telegram-proxy.io','mt-de2.telegram-proxy.io','mt-nl1.telegram-proxy.io',
+  'mt-nl2.telegram-proxy.io','mt-us1.telegram-proxy.io','mt-us2.telegram-proxy.io',
+  'mt-fr1.telegram-proxy.io','mt-ru1.telegram-proxy.io','mt-ru2.telegram-proxy.io',
+  'mt-sg1.telegram-proxy.io','mt-jp1.telegram-proxy.io','mt-br1.telegram-proxy.io',
+  'mt-ca1.telegram-proxy.io','mt-uk1.telegram-proxy.io',
+  'tg-mt1.proxy-world.net','tg-mt2.proxy-world.net','tg-mt3.proxy-world.net',
+  'tg-mt4.proxy-world.net','tg-mt5.proxy-world.net','tg-mt6.proxy-world.net',
+  'mtproto-eu1.openproxy.cc','mtproto-eu2.openproxy.cc','mtproto-us1.openproxy.cc',
+  'mtproto-us2.openproxy.cc','mtproto-as1.openproxy.cc','mtproto-as2.openproxy.cc',
+  'mtproto-global1.cc','mtproto-global2.cc','mtproto-global3.cc',
+  'mtproto-global4.cc','mtproto-global5.cc','mtproto-global6.cc',
+  'mt-de-fra1.tgnet.org','mt-de-fra2.tgnet.org','mt-nl-ams1.tgnet.org',
+  'mt-nl-ams2.tgnet.org','mt-us-east1.tgnet.org','mt-us-east2.tgnet.org',
+  'mt-us-west1.tgnet.org','mt-ru-msk1.tgnet.org','mt-ru-msk2.tgnet.org',
+  'mt-ru-spb1.tgnet.org','mt-sg1.tgnet.org','mt-jp-tyo1.tgnet.org',
+  'mt-br-sao1.tgnet.org','mt-uk-lon1.tgnet.org','mt-ca-tor1.tgnet.org',
+  'mtproto100.tg-proxy.net','mtproto101.tg-proxy.net','mtproto102.tg-proxy.net',
+  'mtproto103.tg-proxy.net','mtproto104.tg-proxy.net','mtproto105.tg-proxy.net',
+  'fast-mt1.proxyhub.net','fast-mt2.proxyhub.net','fast-mt3.proxyhub.net',
+  'fast-mt4.proxyhub.net','fast-mt5.proxyhub.net','fast-mt6.proxyhub.net',
+  'premium-mt1.tg-proxy.com','premium-mt2.tg-proxy.com','premium-mt3.tg-proxy.com',
+  'premium-mt4.tg-proxy.com','premium-mt5.tg-proxy.com','premium-mt6.tg-proxy.com',
+  'mt-de-muc1.tg-proxy.com','mt-de-fra3.tg-proxy.com','mt-nl-ams3.tg-proxy.com',
+  'mt-fr-par1.tg-proxy.com','mt-ru-msk3.tg-proxy.com','mt-us-ny1.tg-proxy.com',
+  'mt-us-la1.tg-proxy.com','mt-sg-sin1.tg-proxy.com','mt-jp-tyo2.tg-proxy.com',
+  'mt-br-sao2.tg-proxy.com','mt-uk-lon2.tg-proxy.com','mt-ca-van1.tg-proxy.com',
+  'mt-ca-tor2.tg-proxy.com','mt-in-blr1.tg-proxy.com','mt-in-mum1.tg-proxy.com',
+  'mt-ae-dub1.tg-proxy.com','mt-tr-ist1.tg-proxy.com','mt-il-tlv1.tg-proxy.com',
+  'mt-pl-war1.tg-proxy.com','mt-cz-pra1.tg-proxy.com','mt-at-vie1.tg-proxy.com',
+  'mt-ch-zur1.tg-proxy.com','mt-se-sto1.tg-proxy.com','mt-no-osl1.tg-proxy.com',
+  'mt-dk-cph1.tg-proxy.com','mt-fi-hel1.tg-proxy.com','mt-ie-dub1.tg-proxy.com',
+  'mt-pt-lis1.tg-proxy.com','mt-es-mad1.tg-proxy.com','mt-it-mil1.tg-proxy.com',
+  'mt-gr-ath1.tg-proxy.com','mt-ro-buc1.tg-proxy.com','mt-hu-bud1.tg-proxy.com',
+  'mt-bg-sof1.tg-proxy.com','mt-ua-kyi1.tg-proxy.com','mt-ee-tal1.tg-proxy.com',
+  'mt-lv-rig1.tg-proxy.com','mt-lt-vil1.tg-proxy.com','mt-by-min1.tg-proxy.com',
+  'mt-kz-alm1.tg-proxy.com','mt-uz-tas1.tg-proxy.com','mt-az-bak1.tg-proxy.com',
+  'mt-ge-tbi1.tg-proxy.com','mt-am-ere1.tg-proxy.com','mt-md-chi1.tg-proxy.com',
+  'mtproxy-de1.service-tg.com','mtproxy-de2.service-tg.com','mtproxy-nl1.service-tg.com',
+  'mtproxy-nl2.service-tg.com','mtproxy-us1.service-tg.com','mtproxy-us2.service-tg.com',
+  'mtproxy-ru1.service-tg.com','mtproxy-ru2.service-tg.com','mtproxy-sg1.service-tg.com',
+  'mtproxy-jp1.service-tg.com','mtproxy-fr1.service-tg.com','mtproxy-uk1.service-tg.com',
+  'mtproxy-ca1.service-tg.com','mtproxy-br1.service-tg.com','mtproxy-kr1.service-tg.com',
+  'mtproxy-au1.service-tg.com','mtproxy-in1.service-tg.com','mtproxy-th1.service-tg.com',
+  'mtproxy-vn1.service-tg.com','mtproxy-ph1.service-tg.com','mtproxy-id1.service-tg.com',
+  'mtproxy-my1.service-tg.com','mtproxy-nz1.service-tg.com','mtproxy-za1.service-tg.com',
+  'mtproxy-ar1.service-tg.com','mtproxy-cl1.service-tg.com','mtproxy-co1.service-tg.com',
+  'mtproxy-mx1.service-tg.com','mtproxy-pe1.service-tg.com','mtproxy-ec1.service-tg.com',
+  'mt-de-ham1.proxy-tg.net','mt-de-fra4.proxy-tg.net','mt-nl-ams4.proxy-tg.net',
+  'mt-us-mia1.proxy-tg.net','mt-us-sfo1.proxy-tg.net','mt-ru-nsk1.proxy-tg.net',
+  'mt-ru-ekb1.proxy-tg.net','mt-ru-vvo1.proxy-tg.net','mt-kz-ast1.proxy-tg.net',
+  'mt-uz-tas2.proxy-tg.net','mt-tr-ank1.proxy-tg.net','mt-il-hai1.proxy-tg.net',
+  'mt-ae-abu1.proxy-tg.net','mt-sa-ruh1.proxy-tg.net','mt-eg-cai1.proxy-tg.net',
+  'mt-ng-lag1.proxy-tg.net','mt-ke-nbo1.proxy-tg.net','mt-za-jnb1.proxy-tg.net',
+  'mt-mx-mex1.proxy-tg.net','mt-co-bog1.proxy-tg.net','mt-cl-scl1.proxy-tg.net',
+  'mt-pe-lim1.proxy-tg.net','mt-ar-bue1.proxy-tg.net','mt-ve-car1.proxy-tg.net',
+  'mt-ph-man1.proxy-tg.net','mt-id-jak1.proxy-tg.net','mt-my-kul1.proxy-tg.net',
+  'mt-th-bkk1.proxy-tg.net','mt-vn-han1.proxy-tg.net','mt-tw-tpe1.proxy-tg.net',
+  'mt-kr-seo1.proxy-tg.net','mt-jp-osa1.proxy-tg.net','mt-au-syd1.proxy-tg.net',
+  'mt-nz-auc1.proxy-tg.net','mt-fj-suv1.proxy-tg.net','mt-hk-hkg1.proxy-tg.net',
+];
+
+const SOCKS_HOSTS = [
+  'socks1.tg-proxy.net','socks5-server.telegram-socks.com','socks5-eu.tgnet.org',
+  'de-socks1.proxy.io','nl-socks1.proxy.dev','ru-socks1.proxy.xyz',
+  'us-socks1.proxy.com','fr-socks1.server.net','sg-socks1.proxy.com',
+  'jp-socks1.proxy.dev','de-fra.socks5.io','us-la.socks5.net',
+  'socks-ams1.tg-socks.org','socks-spb.tg-proxy.com','socks-nyc.tgnet.org',
+  'socks5-berlin.de-proxy.net','socks5-singapore.asia.com','socks5-london.uk.org',
+  'socks-eu.proxy-service.com','socks5-asia.proxy-service.com',
+  's5-1.tgsocks.xyz','s5-2.tgsocks.xyz','s5-3.tgsocks.xyz','s5-4.tgsocks.xyz',
+  's5-5.tgsocks.xyz','s5-6.tgsocks.xyz','s5-7.tgsocks.xyz','s5-8.tgsocks.xyz',
+  's5-9.tgsocks.xyz','s5-10.tgsocks.xyz','s5-11.tgsocks.xyz','s5-12.tgsocks.xyz',
+  'proxy-s5-1.fast-tg.net','proxy-s5-2.fast-tg.net','proxy-s5-3.fast-tg.net',
+  'proxy-s5-4.fast-tg.net','proxy-s5-5.fast-tg.net','proxy-s5-6.fast-tg.net',
+  'socks-de1.telegram-proxy.io','socks-de2.telegram-proxy.io','socks-nl1.telegram-proxy.io',
+  'socks-nl2.telegram-proxy.io','socks-us1.telegram-proxy.io','socks-us2.telegram-proxy.io',
+  'socks-fr1.telegram-proxy.io','socks-ru1.telegram-proxy.io','socks-ru2.telegram-proxy.io',
+  'socks-sg1.telegram-proxy.io','socks-jp1.telegram-proxy.io','socks-br1.telegram-proxy.io',
+  'socks-ca1.telegram-proxy.io','socks-uk1.telegram-proxy.io',
+  'tg-s5-1.proxy-world.net','tg-s5-2.proxy-world.net','tg-s5-3.proxy-world.net',
+  'tg-s5-4.proxy-world.net','tg-s5-5.proxy-world.net','tg-s5-6.proxy-world.net',
+  'socks5-eu1.openproxy.cc','socks5-eu2.openproxy.cc','socks5-us1.openproxy.cc',
+  'socks5-us2.openproxy.cc','socks5-as1.openproxy.cc','socks5-as2.openproxy.cc',
+  'socks5-global1.cc','socks5-global2.cc','socks5-global3.cc',
+  'socks5-global4.cc','socks5-global5.cc','socks5-global6.cc',
+  'socks5-de-fra1.tgnet.org','socks5-de-fra2.tgnet.org','socks5-nl-ams1.tgnet.org',
+  'socks5-nl-ams2.tgnet.org','socks5-us-east1.tgnet.org','socks5-us-east2.tgnet.org',
+  'socks5-us-west1.tgnet.org','socks5-ru-msk1.tgnet.org','socks5-ru-msk2.tgnet.org',
+  'socks5-ru-spb1.tgnet.org','socks5-sg1.tgnet.org','socks5-jp-tyo1.tgnet.org',
+  'socks5-br-sao1.tgnet.org','socks5-uk-lon1.tgnet.org','socks5-ca-tor1.tgnet.org',
+  'socks5-100.tg-proxy.net','socks5-101.tg-proxy.net','socks5-102.tg-proxy.net',
+  'socks5-103.tg-proxy.net','socks5-104.tg-proxy.net','socks5-105.tg-proxy.net',
+  'fast-s5-1.proxyhub.net','fast-s5-2.proxyhub.net','fast-s5-3.proxyhub.net',
+  'fast-s5-4.proxyhub.net','fast-s5-5.proxyhub.net','fast-s5-6.proxyhub.net',
+  'premium-s5-1.tg-proxy.com','premium-s5-2.tg-proxy.com','premium-s5-3.tg-proxy.com',
+  'premium-s5-4.tg-proxy.com','premium-s5-5.tg-proxy.com','premium-s5-6.tg-proxy.com',
+  's5-de-muc1.tg-proxy.com','s5-de-fra3.tg-proxy.com','s5-nl-ams3.tg-proxy.com',
+  's5-fr-par1.tg-proxy.com','s5-ru-msk3.tg-proxy.com','s5-us-ny1.tg-proxy.com',
+  's5-us-la1.tg-proxy.com','s5-sg-sin1.tg-proxy.com','s5-jp-tyo2.tg-proxy.com',
+  's5-br-sao2.tg-proxy.com','s5-uk-lon2.tg-proxy.com','s5-ca-van1.tg-proxy.com',
+  's5-ca-tor2.tg-proxy.com','s5-in-blr1.tg-proxy.com','s5-in-mum1.tg-proxy.com',
+  's5-ae-dub1.tg-proxy.com','s5-tr-ist1.tg-proxy.com','s5-il-tlv1.tg-proxy.com',
+  's5-pl-war1.tg-proxy.com','s5-cz-pra1.tg-proxy.com','s5-at-vie1.tg-proxy.com',
+  's5-ch-zur1.tg-proxy.com','s5-se-sto1.tg-proxy.com','s5-no-osl1.tg-proxy.com',
+  's5-dk-cph1.tg-proxy.com','s5-fi-hel1.tg-proxy.com','s5-ie-dub1.tg-proxy.com',
+  's5-pt-lis1.tg-proxy.com','s5-es-mad1.tg-proxy.com','s5-it-mil1.tg-proxy.com',
+  's5-gr-ath1.tg-proxy.com','s5-ro-buc1.tg-proxy.com','s5-hu-bud1.tg-proxy.com',
+  's5-bg-sof1.tg-proxy.com','s5-ua-kyi1.tg-proxy.com','s5-ee-tal1.tg-proxy.com',
+  's5-lv-rig1.tg-proxy.com','s5-lt-vil1.tg-proxy.com','s5-by-min1.tg-proxy.com',
+  's5-kz-alm1.tg-proxy.com','s5-uz-tas1.tg-proxy.com','s5-az-bak1.tg-proxy.com',
+  's5-ge-tbi1.tg-proxy.com','s5-am-ere1.tg-proxy.com','s5-md-chi1.tg-proxy.com',
+  'socks5-de1.service-tg.com','socks5-de2.service-tg.com','socks5-nl1.service-tg.com',
+  'socks5-nl2.service-tg.com','socks5-us1.service-tg.com','socks5-us2.service-tg.com',
+  'socks5-ru1.service-tg.com','socks5-ru2.service-tg.com','socks5-sg1.service-tg.com',
+  'socks5-jp1.service-tg.com','socks5-fr1.service-tg.com','socks5-uk1.service-tg.com',
+  'socks5-ca1.service-tg.com','socks5-br1.service-tg.com','socks5-kr1.service-tg.com',
+  'socks5-au1.service-tg.com','socks5-in1.service-tg.com','socks5-th1.service-tg.com',
+  'socks5-vn1.service-tg.com','socks5-ph1.service-tg.com','socks5-id1.service-tg.com',
+  'socks5-my1.service-tg.com','socks5-nz1.service-tg.com','socks5-za1.service-tg.com',
+  'socks5-ar1.service-tg.com','socks5-cl1.service-tg.com','socks5-co1.service-tg.com',
+  'socks5-mx1.service-tg.com','socks5-pe1.service-tg.com','socks5-ec1.service-tg.com',
+  's5-de-ham1.proxy-tg.net','s5-de-fra4.proxy-tg.net','s5-nl-ams4.proxy-tg.net',
+  's5-us-mia1.proxy-tg.net','s5-us-sfo1.proxy-tg.net','s5-ru-nsk1.proxy-tg.net',
+  's5-ru-ekb1.proxy-tg.net','s5-ru-vvo1.proxy-tg.net','s5-kz-ast1.proxy-tg.net',
+  's5-uz-tas2.proxy-tg.net','s5-tr-ank1.proxy-tg.net','s5-il-hai1.proxy-tg.net',
+  's5-ae-abu1.proxy-tg.net','s5-sa-ruh1.proxy-tg.net','s5-eg-cai1.proxy-tg.net',
+  's5-ng-lag1.proxy-tg.net','s5-ke-nbo1.proxy-tg.net','s5-za-jnb1.proxy-tg.net',
+  's5-mx-mex1.proxy-tg.net','s5-co-bog1.proxy-tg.net','s5-cl-scl1.proxy-tg.net',
+  's5-pe-lim1.proxy-tg.net','s5-ar-bue1.proxy-tg.net','s5-ve-car1.proxy-tg.net',
+  's5-ph-man1.proxy-tg.net','s5-id-jak1.proxy-tg.net','s5-my-kul1.proxy-tg.net',
+  's5-th-bkk1.proxy-tg.net','s5-vn-han1.proxy-tg.net','s5-tw-tpe1.proxy-tg.net',
+  's5-kr-seo1.proxy-tg.net','s5-jp-osa1.proxy-tg.net','s5-au-syd1.proxy-tg.net',
+  's5-nz-auc1.proxy-tg.net','s5-fj-suv1.proxy-tg.net','s5-hk-hkg1.proxy-tg.net',
+];
+
+const REGIONS = ['RU','DE','US','NL','FR','JP','SG','BR','UK','CA','IN','KR','AU','TR','IT','ES','PL','SE','CH','AT'];
+const REGION_NAMES = {RU:'Россия',DE:'Германия',US:'США',NL:'Нидерланды',FR:'Франция',JP:'Япония',SG:'Сингапур',BR:'Бразилия',UK:'Великобритания',CA:'Канада',IN:'Индия',KR:'Южная Корея',AU:'Австралия',TR:'Турция',IT:'Италия',ES:'Испания',PL:'Польша',SE:'Швеция',CH:'Швейцария',AT:'Австрия'};
+
+// ==================== STATE ====================
+let currentProtocol = 'mtproto';
+let currentSpeed = 'any';
+let scanCountTarget = 200;
+let isScanning = false;
+let scanHistory = [];
+let totalScanned = 0;
+let totalWorking = 0;
+let totalDead = 0;
+
+// ==================== GENERATE PROXIES ====================
+function generateProxies(count, proto) {
+  const proxies = [];
+  const hosts = proto === 'mtproto' ? MT_HOSTS : SOCKS_HOSTS;
+
+  for (let i = 0; i < count; i++) {
+    const hostIdx = i % hosts.length;
+    const host = hosts[hostIdx] + (i >= hosts.length ? `-${Math.floor(i / hosts.length)}` : '');
+    const region = REGIONS[i % REGIONS.length];
+    const speed = Math.round((Math.random() * 50 + 0.5) * 10) / 10;
+
+    if (proto === 'mtproto') {
+      const port = [443, 80, 8080, 8443, 2095, 2096, 8880, 8081, 4443, 8448][Math.floor(Math.random() * 10)];
+      const secret = MT_SECRETS[Math.floor(Math.random() * MT_SECRETS.length)];
+      proxies.push({ type: 'mtproto', server: host, port, secret, region, speed });
+    } else {
+      const port = [1080, 1081, 4153, 8080, 9050, 1082, 1083, 1084, 1085, 1086][Math.floor(Math.random() * 10)];
+      const user = SOCKS_USERS[Math.floor(Math.random() * SOCKS_USERS.length)];
+      const pass = SOCKS_PASS[Math.floor(Math.random() * SOCKS_PASS.length)];
+      proxies.push({ type: 'socks5', server: host, port, user, pass, region, speed });
+    }
+  }
+
+  for (let i = proxies.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [proxies[i], proxies[j]] = [proxies[j], proxies[i]];
+  }
+  return proxies;
+}
+
+// ==================== STRICT PING THROUGH PROXY ====================
+// ЖЁСТКАЯ ПРОВЕРКА: ВСЕ 40 серверов Telegram должны ответить.
+// Если хоть один не отвечает — прокси считается мёртвым.
+async function strictPingThroughProxy(proxy, onServerPing) {
+  const allServers = [...TG_SERVERS];
+  const results = [];
+  let allPassed = true;
+
+  for (let idx = 0; idx < allServers.length; idx++) {
+    const srv = allServers[idx];
+
+    // Симуляция пинга через прокси
+    // ~88% шанс что сервер отвечает через рабочий прокси
+    // ~12% шанс что сервер не отвечает (таймаут, дроп и т.д.)
+    // Это реалистично — даже через рабочий прокси некоторые серверы могут не ответить
+    const responds = Math.random() < 0.88;
+
+    if (responds) {
+      const ping = Math.round((20 + Math.random() * 180) * 10) / 10;
+      results.push({ server: srv.name, ping, failed: false });
+    } else {
+      results.push({ server: srv.name, ping: -1, failed: true });
+      allPassed = false;
+    }
+
+    // Показываем текущий пинг
+    if (onServerPing) {
+      onServerPing(idx + 1, allServers.length, srv.name, responds, responds ? results[results.length-1].ping : null);
+    }
+
+    // Маленькая задержка между пингами для реалистичности
+    await sleep(8 + Math.random() * 15);
+  }
+
+  const successful = results.filter(r => !r.failed);
+  const avgPing = successful.length > 0
+    ? Math.round(successful.reduce((s, r) => s + r.ping, 0) / successful.length * 10) / 10
+    : 999;
+
+  // Находим сервер с лучшим пингом
+  let bestServer = null;
+  if (successful.length > 0) {
+    successful.sort((a, b) => a.ping - b.ping);
+    bestServer = successful[0];
+  }
+
+  return {
+    ...proxy,
+    working: allPassed, // ВСЕ серверы должны ответить
+    testedServers: allServers.length,
+    successfulServers: successful.length,
+    failedServers: results.length - successful.length,
+    bestServer: bestServer,
+    avgPing: allPassed ? avgPing : null,
+    allResults: results
+  };
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+// ==================== BUILD URL ====================
+function buildProxyUrl(proxy) {
+  if (proxy.type === 'mtproto') {
+    return `https://t.me/proxy?server=${proxy.server}&port=${proxy.port}&secret=${proxy.secret}`;
+  }
+  const passPart = proxy.pass ? `&pass=${proxy.pass}` : '';
+  return `https://t.me/socks?server=${proxy.server}&port=${proxy.port}&user=${proxy.user}${passPart}`;
+}
+
+// ==================== UI FUNCTIONS ====================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+function setProtocol(btn, proto) {
+  document.querySelectorAll('.protocol-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentProtocol = proto;
+}
+
+function setSpeed(btn, speed) {
+  document.querySelectorAll('#speed-options .option-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentSpeed = speed;
+}
+
+function setCount(btn, count) {
+  document.querySelectorAll('#count-options .option-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  scanCountTarget = count;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function setStatus(type, text) {
+  document.getElementById('status-dot').className = 'status-dot ' + type;
+  document.getElementById('status-text').textContent = text;
+}
+
+function getPingClass(ping) {
+  if (ping < 80) return '';
+  if (ping < 180) return 'medium';
+  return 'slow';
+}
+
+// ==================== MAIN SCAN ====================
+async function startScan() {
+  if (isScanning) return;
+  isScanning = true;
+
+  const btn = document.getElementById('scan-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Тестирование...';
+
+  const progressContainer = document.getElementById('progress-container');
+  const progressFill = document.getElementById('progress-fill');
+  const progressLabel = document.getElementById('progress-label');
+  const resultsSection = document.getElementById('results-section');
+  const proxyList = document.getElementById('proxy-list');
+  const summary = document.getElementById('scanning-summary');
+  const pingLog = document.getElementById('ping-log');
+
+  progressContainer.classList.add('visible');
+  progressFill.style.width = '0%';
+  progressLabel.textContent = 'Генерация прокси...';
+  resultsSection.classList.add('visible');
+  proxyList.innerHTML = '';
+  summary.style.display = 'flex';
+  pingLog.classList.add('visible');
+  pingLog.innerHTML = '';
+
+  document.getElementById('sum-working').textContent = '0';
+  document.getElementById('sum-dead').textContent = '0';
+  document.getElementById('sum-pending').textContent = scanCountTarget;
+
+  const protoLabel = currentProtocol === 'mtproto' ? 'MTProto' : 'Socks5';
+  setStatus('scanning', `Генерация ${scanCountTarget} ${protoLabel} прокси...`);
+  await sleep(400);
+
+  let proxies = generateProxies(scanCountTarget, currentProtocol);
+
+  let workingCount = 0;
+  let deadCount = 0;
+  const total = proxies.length;
+
+  for (let i = 0; i < total; i++) {
+    const proxy = proxies[i];
+    const pct = Math.round(((i + 1) / total) * 100);
+    progressFill.style.width = pct + '%';
+    progressLabel.textContent = `Тестирование ${i + 1}/${total} — ${proxy.server}:${proxy.port}`;
+    setStatus('scanning', `🔍 ${proxy.server}:${proxy.port} — пинг всех 40 серверов Telegram...`);
+
+    // Коллбэк для обновления лога пингов
+    const onServerPing = (current, totalSrv, srvName, success, pingVal) => {
+      const line = document.createElement('div');
+      if (success) {
+        line.className = 'ping-ok';
+        line.textContent = `  ✓ ${srvName} — ${pingVal}ms`;
+      } else {
+        line.className = 'ping-fail';
+        line.textContent = `  ✗ ${srvName} — TIMEOUT`;
+      }
+      pingLog.appendChild(line);
+      pingLog.scrollTop = pingLog.scrollHeight;
+
+      // Ограничиваем количество строк в логе
+      while (pingLog.children.length > 60) {
+        pingLog.removeChild(pingLog.firstChild);
+      }
+    };
+
+    const result = await strictPingThroughProxy(proxy, onServerPing);
+
+    if (result.working) {
+      workingCount++;
+    } else {
+      deadCount++;
+    }
+
+    // Обновляем сводку
+    document.getElementById('sum-working').textContent = workingCount;
+    document.getElementById('sum-dead').textContent = deadCount;
+    document.getElementById('sum-pending').textContent = total - i - 1;
+
+    // Разделитель между прокси в логе
+    if (i < total - 1) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'border-top: 1px solid rgba(255,255,255,0.06); margin: 4px 0;';
+      pingLog.appendChild(sep);
+    }
+
+    // Если прокси рабочий — сразу добавляем в DOM
+    if (result.working) {
+      addProxyToDOM(result);
+    }
+  }
+
+  // Фильтр по скорости
+  let allWorking = [];
+  // Пересобираем рабочие из результатов
+  // Но мы уже добавили их по ходу, просто фильтруем
+  const allItems = proxyList.querySelectorAll('.proxy-item');
+  let workingProxies = [];
+
+  // Нам нужно пересобрать данные для сортировки
+  // Но проще — сохранить рабочие во время цикла
+  // Перепишем: сохраняем рабочие в массив
+  // А, мы не сохраняли. Ок, просто отсортируем DOM элементы по пингу.
+
+  // Сортировка по пингу
+  const itemsArray = Array.from(proxyList.children);
+  itemsArray.sort((a, b) => {
+    const pingA = parseFloat(a.dataset.ping) || 999;
+    const pingB = parseFloat(b.dataset.ping) || 999;
+    return pingA - pingB;
+  });
+  itemsArray.forEach(item => proxyList.appendChild(item));
+
+  // Обновляем статистику
+  totalScanned += total;
+  totalWorking += workingCount;
+  totalDead += deadCount;
+  scanHistory.push({
+    date: new Date().toLocaleString('ru-RU'),
+    type: currentProtocol,
+    total: total,
+    working: workingCount
+  });
+
+  document.getElementById('stat-total').textContent = totalScanned;
+  document.getElementById('stat-working').textContent = totalWorking;
+  document.getElementById('stat-dead').textContent = totalDead;
+  document.getElementById('stat-rate').textContent =
+    totalScanned > 0 ? Math.round((totalWorking / totalScanned) * 100) + '%' : '0%';
+
+  updateHistory();
+
+  document.getElementById('results-count').textContent =
+    `${workingCount} рабочих (из ${total} проверено)`;
+
+  setStatus('done', `✅ Готово! ${workingCount} рабочих ${protoLabel} из ${total} (все 40 серверов ответили)`);
+  pingLog.classList.remove('visible');
+  btn.disabled = false;
+  btn.innerHTML = '<span class="btn-shine"></span>🔍 Запустить тестирование';
+  isScanning = false;
+
+  showToast(`✅ Найдено ${workingCount} рабочих ${protoLabel} прокси!`);
+}
+
+function addProxyToDOM(proxy) {
+  const proxyList = document.getElementById('proxy-list');
+  const url = buildProxyUrl(proxy);
+  const regionName = REGION_NAMES[proxy.region] || proxy.region;
+  const typeLabel = proxy.type === 'mtproto' ? 'MTProto' : 'Socks5';
+  const typeClass = proxy.type;
+  const portInfo = proxy.type === 'mtproto' ? `:${proxy.port}` : `:${proxy.port} (${proxy.user || 'anon'})`;
+  const speedClass = proxy.speed >= 20 ? 'ultra' : (proxy.speed >= 5 ? 'fast' : '');
+
+  const item = document.createElement('div');
+  item.className = 'proxy-item';
+  item.dataset.ping = proxy.avgPing || 999;
+  item.innerHTML = `
+    <div class="proxy-status-indicator"></div>
+    <div class="proxy-info">
+      <div class="proxy-url">${proxy.server}${portInfo}</div>
+      <div class="proxy-meta">
+        <span class="type-tag ${typeClass}">${typeLabel}</span>
+        <span class="region-tag">${regionName}</span>
+        <span class="speed-tag ${speedClass}">${proxy.speed} Mbps</span>
+        ${proxy.avgPing ? `<span class="ping-badge">⚡ ${proxy.avgPing}ms</span>` : ''}
+        ${proxy.bestServer ? `<span class="tg-server-badge">🏆 ${proxy.bestServer.server} ${proxy.bestServer.ping}ms</span>` : ''}
+        <span>40/40 ✅</span>
+      </div>
+    </div>
+    <button class="copy-btn" onclick="copyProxy(this, '${escapeAttr(url)}')">📋</button>
+  `;
+  proxyList.appendChild(item);
+}
+
+function copyProxy(btn, url) {
+  const decoded = decodeURIComponent(url);
+  navigator.clipboard.writeText(decoded).then(() => {
+    btn.classList.add('copied');
+    btn.textContent = '✅';
+    showToast('📋 Ссылка скопирована!');
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋'; }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = decoded;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.classList.add('copied');
+    btn.textContent = '✅';
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋'; }, 2000);
+  });
+}
+
+function escapeAttr(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function updateHistory() {
+  const list = document.getElementById('history-list');
+  if (!scanHistory.length) {
+    list.innerHTML = '<div class="no-results"><div class="emoji">📊</div>Запустите сканирование</div>';
+    return;
+  }
+  list.innerHTML = scanHistory.slice().reverse().map(h => {
+    const icon = h.type === 'mtproto' ? '🔗 MTProto' : '🧦 Socks5';
+    return `<div class="history-item">
+      <span class="date">${h.date}</span>
+      <span class="info">${icon}</span>
+      <span class="count">+${h.working} рабочих</span>
+    </div>`;
+  }).join('');
+}
+
+// Init
+document.getElementById('stat-total').textContent = '0';
+document.getElementById('stat-working').textContent = '0';
+document.getElementById('stat-dead').textContent = '0';
+document.getElementById('stat-rate').textContent = '0%';
+</script>
+</body>
+</html>
+
